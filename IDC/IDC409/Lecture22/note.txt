@@ -1,0 +1,29 @@
+----- Some libraries we talked in the class ----
+
+SciPy,  Easy to use, integrated in the scientific stack
+
+   scipy.optimize.minimize
+
+CVXPY for convex NL programs . If it’s not convex/DCP-compliant, it will refuse to solve.
+
+Pyomo (+ IPOPT) very flexible modeling for nonconvex NLP (and MIP, MINLP). 
+
+Pyomo is an algebraic modeling language that lets one define  optimization problem with Python objects (variables, objectives,
+constraints) in a natural, mathematical way. But remember it then calls a separate
+solver to find the solution.
+For non-linear problems, it commonly interfaces with powerful open-source solvers like (a state-of-the-art interior-point optimizer) and .
+
+
+CasADi symbolic/automatic differentiation + IPOPT; good if one need fasts/accurate derivatives or dynamic optimization.
+
+
+Symbolic framework with automatic differentiation.
+
+Also worth knowing: NLopt, GEKKO 
+
+NLopt is not a single algorithm but a library that provides a
+common interface to a large number of different optimization algorithms,
+both open-source and proprietary. 
+Huge collection of diverse algorithms.
+
+---

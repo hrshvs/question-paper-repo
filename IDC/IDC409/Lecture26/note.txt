@@ -1,0 +1,9 @@
+Please go through it once. 
+ I will not ask any question from SVM, but you should know what is happening in SVM at back. It is very straightforward concept.
+
+Please read from Neuron,  Activation function, ReLU, Leaky ReLU, Softmax. 
+I am trying to see if I can explain this lecture, but my last minute urgent travel has messed up the schedule. Otherwise I was thinking of having class today for it. 
+
+>>> I will only ask questions from Neuron (which is simple and straightforward). 
+
+>>> For SVM, no question will be asked (it is for your practice and knowledge).
