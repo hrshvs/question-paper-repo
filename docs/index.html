@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="IISER Mohali Question Paper Repository - Browse past quizzes, exams, and assignments">
+    <title>IISER Mohali Question Paper Repository</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>IISER Mohali Question Paper Repository</h1>
+            <p class="subtitle">Archive of question papers and exercise sheets collected by students over several years</p>
+        </div>
+    </header>
+
+    <nav class="nav-bar">
+        <div class="container">
+            <a href="https://github.com/IISERM/question-paper-repo" target="_blank" class="nav-link">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                    <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+                </svg>
+                View Source
+            </a>
+            <a href="https://github.com/IISERM/question-paper-repo#contribute" target="_blank" class="nav-link">
+                Contribute
+            </a>
+            <a href="https://github.com/IISERM/question-paper-repo/issues/new" target="_blank" class="nav-link">
+                Report Issue
+            </a>
+        </div>
+    </nav>
+
+    <main class="container">
+        <div class="intro-section">
+            <h2>Browse the Repository</h2>
+            <p>Click on any folder below to explore its contents. Each department contains course-wise folders with past quizzes, minors, majors, endsems, and exercise sheets.</p>
+        </div>
+
+        <div id="loading" class="loading">Loading folder structure...</div>
+        <div id="error" class="error" style="display: none;"></div>
+        
+        <div id="folder-tree" class="folder-tree"></div>
+
+        <div class="quick-stats">
+            <h3>Quick Stats</h3>
+            <div id="stats" class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number" id="total-folders">-</div>
+                    <div class="stat-label">Departments</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="total-courses">-</div>
+                    <div class="stat-label">Courses</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="total-files">-</div>
+                    <div class="stat-label">Files</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="info-section">
+            <h3>About This Archive</h3>
+            <p>This archive contains course materials from various departments at IISER Mohali:</p>
+            <ul>
+                <li><strong>Biology</strong> - BIO courses covering molecular biology, genetics, and more</li>
+                <li><strong>Chemistry</strong> - CHM courses including organic, inorganic, and physical chemistry</li>
+                <li><strong>HSS</strong> - Humanities and Social Sciences courses</li>
+                <li><strong>IDC</strong> - Interdisciplinary courses covering various topics</li>
+                <li><strong>Math</strong> - MTH courses from calculus to advanced mathematics</li>
+                <li><strong>Physics</strong> - PHY courses covering classical to quantum physics</li>
+            </ul>
+            <p class="note">Quality varies; some scans are rough. This is a student-run archive intended for learning and exam prep.</p>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>Maintained by the IISER Mohali student community</p>
+            <p class="footer-links">
+                <a href="https://github.com/IISERM/question-paper-repo" target="_blank">GitHub Repository</a>
+                <span class="separator">•</span>
+                <a href="https://iiserm.github.io/course_files/" target="_blank">Course Files Mirror</a>
+                <span class="separator">•</span>
+                <a href="https://www.iisermohali.ac.in/" target="_blank">IISER Mohali</a>
+            </p>
+            <p class="last-updated">Last updated: <span id="last-updated">-</span></p>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
