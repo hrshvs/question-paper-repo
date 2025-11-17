@@ -1,6 +1,23 @@
 {
-  "generated": "2025-11-17T20:46:01.451Z",
+  "generated": "2025-11-17T21:29:40.741Z",
   "folders": [
+    {
+      "name": ".github",
+      "path": ".github",
+      "children": [
+        {
+          "name": "workflows",
+          "path": ".github/workflows",
+          "children": [
+            {
+              "name": "deploy-pages.yml",
+              "path": ".github/workflows/deploy-pages.yml",
+              "isFile": true
+            }
+          ]
+        }
+      ]
+    },
     {
       "name": "Biology",
       "path": "Biology",
