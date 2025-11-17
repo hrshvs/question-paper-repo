@@ -149,19 +149,17 @@ main {
     background: var(--background);
 }
 
-.folder-header, .file-link {
+.folder-link, .file-link {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 0.75rem;
-    cursor: pointer;
-    user-select: none;
     text-decoration: none;
     color: var(--text-primary);
 }
 
-.folder-icon, .file-icon {
-    font-size: 1.25rem;
-    flex-shrink: 0;
+.folder-link:hover {
+    color: var(--primary-color);
 }
 
 .folder-name, .file-name {
@@ -177,33 +175,45 @@ main {
     border-radius: 1rem;
 }
 
-.folder-children {
-    margin-left: 2rem;
-    margin-top: 0.5rem;
-    border-left: 2px solid var(--border);
-    padding-left: 1rem;
-}
-
-.folder-children.collapsed {
-    display: none;
-}
-
-.toggle-icon {
-    transition: transform 0.2s;
-    font-size: 0.875rem;
-    color: var(--text-secondary);
-}
-
-.toggle-icon.collapsed {
-    transform: rotate(-90deg);
-}
-
 .file-link {
     color: var(--primary-color);
 }
 
 .file-link:hover {
     color: var(--primary-hover);
+}
+
+.empty-message {
+    color: var(--text-secondary);
+    text-align: center;
+    padding: 2rem;
+}
+
+/* Breadcrumb */
+.breadcrumb {
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    background: var(--surface);
+    border-radius: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.breadcrumb a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+.breadcrumb a:hover {
+    text-decoration: underline;
+}
+
+.breadcrumb-separator {
+    color: var(--text-secondary);
+}
+
+.breadcrumb-current {
+    color: var(--text-primary);
+    font-weight: 500;
 }
 
 /* Stats */

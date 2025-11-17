@@ -5,6 +5,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const treeEl = document.getElementById('folder-tree');
     const lastUpdatedEl = document.getElementById('last-updated');
 
+    // Get current path from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentPath = urlParams.get('path') || '';
+
     try {
         // Fetch the data
         const response = await fetch('data.json');
@@ -52,8 +56,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('total-courses').textContent = totalCourses;
         document.getElementById('total-files').textContent = totalFiles;
 
+        // Find current folder
+        let currentFolder = null;
+        if (currentPath) {
+            currentFolder = findFolderByPath(data.folders, currentPath);
+        }
+
+        // Update page title if in a subfolder
+        if (currentFolder) {
+            document.querySelector('h2').textContent = currentFolder.name;
+            document.querySelector('.intro-section p').textContent = `Browse the contents of ${currentFolder.name}`;
+            
+            // Add breadcrumb navigation
+            addBreadcrumbs(currentPath);
+        }
+
         // Render the tree
-        renderTree(data.folders, treeEl);
+        const itemsToRender = currentFolder ? currentFolder.children : data.folders;
+        renderTree(itemsToRender, treeEl, currentPath);
 
     } catch (error) {
         console.error('Error loading folder structure:', error);
@@ -63,32 +83,88 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
-function renderTree(items, parentElement, level = 0) {
+function findFolderByPath(folders, path) {
+    const parts = path.split('/');
+    let current = folders;
+    let folder = null;
+
+    for (const part of parts) {
+        if (!current) break;
+        folder = current.find(item => item.name === part && !item.isFile);
+        if (!folder) return null;
+        current = folder.children;
+    }
+
+    return folder;
+}
+
+function addBreadcrumbs(currentPath) {
+    const introSection = document.querySelector('.intro-section');
+    const breadcrumbDiv = document.createElement('div');
+    breadcrumbDiv.className = 'breadcrumb';
+    
+    const parts = currentPath.split('/');
+    let pathSoFar = '';
+    
+    // Home link
+    const homeLink = document.createElement('a');
+    homeLink.href = 'index.html';
+    homeLink.textContent = 'Home';
+    breadcrumbDiv.appendChild(homeLink);
+    
+    // Add separator and path parts
+    parts.forEach((part, index) => {
+        const separator = document.createElement('span');
+        separator.textContent = ' / ';
+        separator.className = 'breadcrumb-separator';
+        breadcrumbDiv.appendChild(separator);
+        
+        pathSoFar += (pathSoFar ? '/' : '') + part;
+        
+        if (index === parts.length - 1) {
+            // Current page - no link
+            const current = document.createElement('span');
+            current.textContent = part;
+            current.className = 'breadcrumb-current';
+            breadcrumbDiv.appendChild(current);
+        } else {
+            // Link to parent
+            const link = document.createElement('a');
+            link.href = `index.html?path=${encodeURIComponent(pathSoFar)}`;
+            link.textContent = part;
+            breadcrumbDiv.appendChild(link);
+        }
+    });
+    
+    introSection.insertBefore(breadcrumbDiv, introSection.firstChild);
+}
+
+function renderTree(items, parentElement, basePath = '') {
+    if (!items || items.length === 0) {
+        const emptyMsg = document.createElement('p');
+        emptyMsg.textContent = 'No items in this folder.';
+        emptyMsg.className = 'empty-message';
+        parentElement.appendChild(emptyMsg);
+        return;
+    }
+
     items.forEach(item => {
         if (item.isFile) {
             parentElement.appendChild(createFileElement(item));
         } else {
-            parentElement.appendChild(createFolderElement(item, level));
+            parentElement.appendChild(createFolderElement(item, basePath));
         }
     });
 }
 
-function createFolderElement(folder, level) {
+function createFolderElement(folder, basePath) {
     const div = document.createElement('div');
     div.className = 'folder-item';
 
-    const header = document.createElement('div');
-    header.className = 'folder-header';
-
-    // Toggle icon
-    const toggleIcon = document.createElement('span');
-    toggleIcon.className = 'toggle-icon';
-    toggleIcon.textContent = '▼';
-
-    // Folder icon
-    const icon = document.createElement('span');
-    icon.className = 'folder-icon';
-    icon.textContent = '📁';
+    const link = document.createElement('a');
+    link.className = 'folder-link';
+    const newPath = basePath ? `${basePath}/${folder.name}` : folder.name;
+    link.href = `index.html?path=${encodeURIComponent(newPath)}`;
 
     // Folder name
     const name = document.createElement('span');
@@ -101,36 +177,9 @@ function createFolderElement(folder, level) {
     const itemCount = folder.children ? folder.children.length : 0;
     count.textContent = `${itemCount} item${itemCount !== 1 ? 's' : ''}`;
 
-    header.appendChild(toggleIcon);
-    header.appendChild(icon);
-    header.appendChild(name);
-    header.appendChild(count);
-
-    div.appendChild(header);
-
-    // Children container
-    if (folder.children && folder.children.length > 0) {
-        const childrenDiv = document.createElement('div');
-        childrenDiv.className = 'folder-children';
-        
-        // Collapse deep levels by default (level > 1)
-        if (level > 1) {
-            childrenDiv.classList.add('collapsed');
-            toggleIcon.classList.add('collapsed');
-        }
-
-        renderTree(folder.children, childrenDiv, level + 1);
-        div.appendChild(childrenDiv);
-
-        // Toggle functionality
-        header.addEventListener('click', () => {
-            childrenDiv.classList.toggle('collapsed');
-            toggleIcon.classList.toggle('collapsed');
-        });
-    } else {
-        // No children, remove toggle icon
-        toggleIcon.style.visibility = 'hidden';
-    }
+    link.appendChild(name);
+    link.appendChild(count);
+    div.appendChild(link);
 
     return div;
 }
@@ -145,86 +194,13 @@ function createFileElement(file) {
     link.target = '_blank';
     link.rel = 'noopener noreferrer';
 
-    // File icon based on extension
-    const icon = document.createElement('span');
-    icon.className = 'file-icon';
-    icon.textContent = getFileIcon(file.name);
-
     // File name
     const name = document.createElement('span');
     name.className = 'file-name';
     name.textContent = file.name;
 
-    link.appendChild(icon);
     link.appendChild(name);
     div.appendChild(link);
 
     return div;
 }
-
-function getFileIcon(filename) {
-    const ext = filename.split('.').pop().toLowerCase();
-    const iconMap = {
-        'pdf': '📄',
-        'doc': '📝',
-        'docx': '📝',
-        'txt': '📝',
-        'md': '📝',
-        'png': '🖼️',
-        'jpg': '🖼️',
-        'jpeg': '🖼️',
-        'gif': '🖼️',
-        'zip': '📦',
-        'rar': '📦',
-        '7z': '📦',
-        'ppt': '📊',
-        'pptx': '📊',
-        'xls': '📊',
-        'xlsx': '📊',
-    };
-    return iconMap[ext] || '📄';
-}
-
-// Add search functionality (optional enhancement)
-function addSearchFunctionality() {
-    const searchInput = document.createElement('input');
-    searchInput.type = 'text';
-    searchInput.placeholder = 'Search folders and files...';
-    searchInput.style.cssText = `
-        width: 100%;
-        padding: 0.75rem 1rem;
-        margin-bottom: 1rem;
-        border: 1px solid var(--border);
-        border-radius: 0.5rem;
-        font-size: 1rem;
-        font-family: inherit;
-    `;
-
-    const treeEl = document.getElementById('folder-tree');
-    treeEl.parentElement.insertBefore(searchInput, treeEl);
-
-    searchInput.addEventListener('input', (e) => {
-        const searchTerm = e.target.value.toLowerCase();
-        const allItems = treeEl.querySelectorAll('.folder-item, .file-item');
-
-        allItems.forEach(item => {
-            const text = item.textContent.toLowerCase();
-            if (text.includes(searchTerm)) {
-                item.style.display = '';
-                // Expand parent folders
-                let parent = item.closest('.folder-children');
-                while (parent) {
-                    parent.classList.remove('collapsed');
-                    const toggle = parent.previousElementSibling?.querySelector('.toggle-icon');
-                    if (toggle) toggle.classList.remove('collapsed');
-                    parent = parent.parentElement.closest('.folder-children');
-                }
-            } else {
-                item.style.display = 'none';
-            }
-        });
-    });
-}
-
-// Uncomment to enable search
-// setTimeout(addSearchFunctionality, 100);
