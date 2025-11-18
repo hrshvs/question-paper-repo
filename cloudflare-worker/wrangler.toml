@@ -1,0 +1,13 @@
+name = "qpr-contribution-worker"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+
+# Secrets to add via: wrangler secret put SECRET_NAME
+# GITHUB_CLIENT_ID
+# GITHUB_CLIENT_SECRET
+
+[vars]
+GITHUB_REPO_OWNER = "IISERM"
+GITHUB_REPO_NAME = "question-paper-repo"
+FRONTEND_URL = "https://iiserm.github.io/question-paper-repo"
+

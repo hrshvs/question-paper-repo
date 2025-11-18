@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+
+# Wrangler
+.wrangler/
+dist/
+worker/
+
+# Environment files (NEVER commit these!)
+.env
+.env.local
+.dev.vars
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Secrets (NEVER commit these!)
+secrets.json
+.secrets
+
