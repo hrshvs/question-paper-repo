@@ -4,7 +4,7 @@
 
 // Configuration
 const CONFIG = {
-    WORKER_URL: 'https://qpr-contribution-worker.qpr-iiserm.workers.dev/auth/callback',
+    WORKER_URL: 'https://qpr-contribution-worker.qpr-iiserm.workers.dev',
     GITHUB_CLIENT_ID: 'Ov23linzqUpdM2As790u',
     GITHUB_REPO_OWNER: 'IISERM',
     GITHUB_REPO_NAME: 'question-paper-repo',
