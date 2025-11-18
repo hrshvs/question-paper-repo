@@ -1,3 +1,39 @@
+# Dependencies
 node_modules/
-.DS_Store
+
+# Cloudflare Worker artifacts
+.wrangler/
+dist/
+worker/
+
+# Environment files (NEVER commit secrets!)
+.env
+.env.local
+.dev.vars
+
+# Logs
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# IDE
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Build outputs
+build/
+out/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
