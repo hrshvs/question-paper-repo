@@ -1,6 +1,15 @@
 /**
  * Firebase Configuration for QPR Contribution Portal
  * 
+ * SECURITY NOTE:
+ * These API keys are safe to commit to public repositories. Firebase client API keys
+ * are designed to be public and security is enforced through:
+ * - Authorized domains (only iiserm.github.io can use this)
+ * - Authentication rules (only @iisermohali.ac.in emails)
+ * - Firebase Security Rules (if using database)
+ * 
+ * See: https://firebase.google.com/docs/projects/api-keys
+ * 
  * SETUP INSTRUCTIONS:
  * 1. Replace the placeholder values below with your actual Firebase project credentials
  * 2. Get these values from: Firebase Console > Project Settings > General > Your apps > Web app
