@@ -5,7 +5,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const IGNORE_DIRS = ['.git', 'node_modules', 'docs'];
+const IGNORE_DIRS = ['.git', 'node_modules', 'docs', 'cloudflare-worker'];
 const ROOT_DIR = path.join(__dirname, '..');
 
 function getDirectoryTree(dir, relativePath = '') {
