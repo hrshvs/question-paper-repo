@@ -5,6 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="IISER Mohali Question Paper Repository - Browse past quizzes, exams, and assignments">
     <title>IISER Mohali Question Paper Repository</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="icon.png">
+    <link rel="apple-touch-icon" href="icon.png">
+    
+    <!-- Preload logo to prevent flash -->
+    <link rel="preload" as="image" href="icon_nobg.png">
+    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
@@ -20,6 +28,7 @@
 <body>
     <header>
         <div class="container header-row">
+            <img src="icon_nobg.png" alt="QPR Logo" class="header-logo" loading="eager" width="60" height="60">
             <div class="header-content">
                 <h1>QPR</h1>
                 <p class="subtitle">IISER-M Question Paper Repository</p>
@@ -52,6 +61,10 @@
                 Contribute
             </a>
             <a href="https://github.com/IISERM/question-paper-repo/issues/new" target="_blank" class="nav-link">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                    <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                    <path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0zM7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 4.995z"/>
+                </svg>
                 Report Issue
             </a>
         </div>
