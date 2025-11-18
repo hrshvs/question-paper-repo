@@ -85,6 +85,9 @@ async function handleAuthCallback(url, env, headers) {
   }
 
   try {
+    console.log('Exchanging code for token...');
+    console.log('Client ID:', env.GITHUB_CLIENT_ID);
+    
     // Exchange code for access token
     const tokenResponse = await fetch('https://github.com/login/oauth/access_token', {
       method: 'POST',
@@ -99,32 +102,49 @@ async function handleAuthCallback(url, env, headers) {
       }),
     });
 
-    const tokenData = await tokenResponse.json();
+    console.log('Token response status:', tokenResponse.status);
+    const responseText = await tokenResponse.text();
+    console.log('Token response body:', responseText);
+    
+    const tokenData = JSON.parse(responseText);
     
     if (tokenData.error) {
+      console.error('GitHub error:', tokenData.error, tokenData.error_description);
       throw new Error(tokenData.error_description || tokenData.error);
     }
 
     // Get user info
+    console.log('Getting user info...');
     const userResponse = await fetch('https://api.github.com/user', {
       headers: {
         'Authorization': `Bearer ${tokenData.access_token}`,
         'Accept': 'application/vnd.github.v3+json',
+        'User-Agent': 'QPR-Contribution-Portal',
       },
     });
 
-    const userData = await userResponse.json();
+    console.log('User response status:', userResponse.status);
+    const userResponseText = await userResponse.text();
+    console.log('User response body:', userResponseText);
+    
+    const userData = JSON.parse(userResponseText);
 
     // Redirect back to frontend with token
+    console.log('Redirecting to frontend with username:', userData.login);
     const redirectUrl = new URL(`${env.FRONTEND_URL}/docs/contribute.html`);
     redirectUrl.searchParams.set('token', tokenData.access_token);
     redirectUrl.searchParams.set('username', userData.login);
     if (state) redirectUrl.searchParams.set('state', state);
 
+    console.log('Redirect URL:', redirectUrl.toString());
     return Response.redirect(redirectUrl.toString(), 302);
   } catch (error) {
+    console.error('Caught error in handleAuthCallback:', error);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
     const errorUrl = new URL(`${env.FRONTEND_URL}/docs/contribute.html`);
     errorUrl.searchParams.set('error', error.message);
+    console.log('Redirecting to error URL:', errorUrl.toString());
     return Response.redirect(errorUrl.toString(), 302);
   }
 }
@@ -149,6 +169,7 @@ async function handleCheckFork(request, env, headers) {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Accept': 'application/vnd.github.v3+json',
+        'User-Agent': 'QPR-Contribution-Portal',
       },
     });
     
@@ -161,6 +182,7 @@ async function handleCheckFork(request, env, headers) {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/vnd.github.v3+json',
+          'User-Agent': 'QPR-Contribution-Portal',
         },
       }
     );
@@ -209,6 +231,7 @@ async function handleFork(request, env, headers) {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/vnd.github.v3+json',
+          'User-Agent': 'QPR-Contribution-Portal',
         },
       }
     );
@@ -254,6 +277,7 @@ async function handleCreateBranch(request, env, headers) {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Accept': 'application/vnd.github.v3+json',
+        'User-Agent': 'QPR-Contribution-Portal',
       },
     });
 
@@ -267,6 +291,7 @@ async function handleCreateBranch(request, env, headers) {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/vnd.github.v3+json',
+          'User-Agent': 'QPR-Contribution-Portal',
         },
       }
     );
@@ -283,6 +308,7 @@ async function handleCreateBranch(request, env, headers) {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/vnd.github.v3+json',
           'Content-Type': 'application/json',
+          'User-Agent': 'QPR-Contribution-Portal',
         },
         body: JSON.stringify({
           ref: `refs/heads/${branchName}`,
@@ -333,6 +359,7 @@ async function handleUploadFile(request, env, headers) {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/vnd.github.v3+json',
           'Content-Type': 'application/json',
+          'User-Agent': 'QPR-Contribution-Portal',
         },
         body: JSON.stringify({
           message: message,
@@ -384,6 +411,7 @@ async function handleCreatePR(request, env, headers) {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/vnd.github.v3+json',
           'Content-Type': 'application/json',
+          'User-Agent': 'QPR-Contribution-Portal',
         },
         body: JSON.stringify({
           title: title,
