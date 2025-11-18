@@ -3,6 +3,8 @@
  * Handles OAuth and GitHub API operations for the contribution system
  */
 
+import { getInstallationToken } from './github-app.js';
+
 // CORS headers for all responses
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*', // Will be restricted in handleRequest
@@ -13,7 +15,22 @@ const corsHeaders = {
 
 export default {
   async fetch(request, env, ctx) {
-    return handleRequest(request, env);
+    try {
+      return await handleRequest(request, env);
+    } catch (error) {
+      console.error('Top-level error:', error);
+      console.error('Error stack:', error.stack);
+      return new Response(JSON.stringify({ 
+        error: error.message,
+        stack: error.stack 
+      }), {
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+        },
+      });
+    }
   },
 };
 
@@ -24,6 +41,7 @@ async function handleRequest(request, env) {
   const allowedOrigins = [
     'https://iiserm.github.io',
     'http://localhost:8000', // For local testing
+    'http://127.0.0.1:8000', // Alternative localhost
   ];
   
   const origin = request.headers.get('Origin');
@@ -61,6 +79,10 @@ async function handleRequest(request, env) {
     
     if (url.pathname === '/api/check-fork') {
       return handleCheckFork(request, env, responseHeaders);
+    }
+    
+    if (url.pathname === '/api/contribute-direct') {
+      return handleDirectContribution(request, env, responseHeaders);
     }
 
     return new Response('Not Found', { status: 404, headers: responseHeaders });
@@ -433,6 +455,229 @@ async function handleCreatePR(request, env, headers) {
     });
   } catch (error) {
     return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { ...headers, 'Content-Type': 'application/json' },
+    });
+  }
+}
+
+/**
+ * Handle direct contribution (Firebase Google Auth flow)
+ * Creates PR directly on main repo using GitHub App token
+ */
+async function handleDirectContribution(request, env, headers) {
+  if (request.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
+      headers: { ...headers, 'Content-Type': 'application/json' },
+    });
+  }
+
+  try {
+    const data = await request.json();
+    const { userEmail, userName, uploadGroups, prTitle, prDescription } = data;
+
+    // Validate required fields
+    if (!userEmail || !userName || !uploadGroups || !prTitle) {
+      return new Response(JSON.stringify({ error: 'Missing required fields' }), {
+        status: 400,
+        headers: { ...headers, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Validate email domain
+    const allowedDomain = env.ALLOWED_EMAIL_DOMAIN || 'iisermohali.ac.in';
+    if (!userEmail.endsWith(`@${allowedDomain}`)) {
+      return new Response(JSON.stringify({ 
+        error: `Only ${allowedDomain} email addresses are allowed` 
+      }), {
+        status: 403,
+        headers: { ...headers, 'Content-Type': 'application/json' },
+      });
+    }
+
+    console.log(`Direct contribution from ${userName} (${userEmail})`);
+
+    // Get GitHub App installation token
+    const appToken = await getInstallationToken(
+      env.GITHUB_APP_ID,
+      env.GITHUB_APP_PRIVATE_KEY,
+      env.GITHUB_APP_INSTALLATION_ID
+    );
+
+    // Create a unique branch name
+    const timestamp = Date.now();
+    const emailPrefix = userEmail.split('@')[0].replace(/[^a-zA-Z0-9]/g, '-');
+    const branchName = `contrib-${emailPrefix}-${timestamp}`;
+
+    // Get the default branch SHA
+    const repoResponse = await fetch(
+      `https://api.github.com/repos/${env.GITHUB_REPO_OWNER}/${env.GITHUB_REPO_NAME}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${appToken}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'User-Agent': 'QPR-Contribution-Bot',
+        },
+      }
+    );
+
+    if (!repoResponse.ok) {
+      throw new Error('Failed to fetch repository information');
+    }
+
+    const repoData = await repoResponse.json();
+    const defaultBranch = repoData.default_branch;
+
+    // Get the SHA of the default branch
+    const refResponse = await fetch(
+      `https://api.github.com/repos/${env.GITHUB_REPO_OWNER}/${env.GITHUB_REPO_NAME}/git/ref/heads/${defaultBranch}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${appToken}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'User-Agent': 'QPR-Contribution-Bot',
+        },
+      }
+    );
+
+    if (!refResponse.ok) {
+      throw new Error('Failed to fetch default branch reference');
+    }
+
+    const refData = await refResponse.json();
+    const baseSha = refData.object.sha;
+
+    // Create new branch
+    const createBranchResponse = await fetch(
+      `https://api.github.com/repos/${env.GITHUB_REPO_OWNER}/${env.GITHUB_REPO_NAME}/git/refs`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${appToken}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json',
+          'User-Agent': 'QPR-Contribution-Bot',
+        },
+        body: JSON.stringify({
+          ref: `refs/heads/${branchName}`,
+          sha: baseSha,
+        }),
+      }
+    );
+
+    if (!createBranchResponse.ok) {
+      const errorData = await createBranchResponse.json();
+      throw new Error(errorData.message || 'Failed to create branch');
+    }
+
+    console.log(`Created branch: ${branchName}`);
+
+    // Upload files with custom author
+    const uploadedFiles = [];
+    for (const group of uploadGroups) {
+      const { folderPath, files } = group;
+      
+      for (const file of files) {
+        const { name, content } = file; // content should be base64
+        const filePath = `${folderPath}/${name}`;
+        
+        console.log(`Uploading file: ${filePath}`);
+        
+        const uploadResponse = await fetch(
+          `https://api.github.com/repos/${env.GITHUB_REPO_OWNER}/${env.GITHUB_REPO_NAME}/contents/${filePath}`,
+          {
+            method: 'PUT',
+            headers: {
+              'Authorization': `Bearer ${appToken}`,
+              'Accept': 'application/vnd.github.v3+json',
+              'Content-Type': 'application/json',
+              'User-Agent': 'QPR-Contribution-Bot',
+            },
+            body: JSON.stringify({
+              message: `Add ${name}`,
+              content: content,
+              branch: branchName,
+              author: {
+                name: userName,
+                email: userEmail,
+              },
+              committer: {
+                name: 'QPR Bot',
+                email: 'bot@iiserm.github.io',
+              },
+            }),
+          }
+        );
+
+        if (!uploadResponse.ok) {
+          const errorData = await uploadResponse.json();
+          console.error(`Failed to upload ${filePath}:`, errorData);
+          throw new Error(`Failed to upload ${name}: ${errorData.message}`);
+        }
+
+        uploadedFiles.push(filePath);
+        console.log(`Uploaded: ${filePath}`);
+      }
+    }
+
+    // Build PR body
+    const filesList = uploadGroups.map(group => {
+      const { folderPath, files } = group;
+      return `- **${folderPath}/**:\n${files.map(f => `  - ${f.name}`).join('\n')}`;
+    }).join('\n\n');
+
+    const prBody = `${prDescription ? prDescription + '\n\n' : ''}**Contributed by:** ${userEmail}
+**Google Account:** ${userName}
+
+### Files Added:
+${filesList}
+
+---
+*This PR was created via the QPR Contribution Portal (Direct submission)*`;
+
+    // Create pull request
+    const prResponse = await fetch(
+      `https://api.github.com/repos/${env.GITHUB_REPO_OWNER}/${env.GITHUB_REPO_NAME}/pulls`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${appToken}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json',
+          'User-Agent': 'QPR-Contribution-Bot',
+        },
+        body: JSON.stringify({
+          title: prTitle,
+          body: prBody,
+          head: branchName,
+          base: defaultBranch,
+        }),
+      }
+    );
+
+    if (!prResponse.ok) {
+      const errorData = await prResponse.json();
+      throw new Error(errorData.message || 'Failed to create pull request');
+    }
+
+    const prData = await prResponse.json();
+    console.log(`Created PR #${prData.number}: ${prData.html_url}`);
+
+    return new Response(JSON.stringify({
+      success: true,
+      pr: prData,
+      branch: branchName,
+      filesUploaded: uploadedFiles,
+    }), {
+      headers: { ...headers, 'Content-Type': 'application/json' },
+    });
+
+  } catch (error) {
+    console.error('Direct contribution error:', error);
+    return new Response(JSON.stringify({ 
+      error: error.message || 'Failed to process direct contribution' 
+    }), {
       status: 500,
       headers: { ...headers, 'Content-Type': 'application/json' },
     });
