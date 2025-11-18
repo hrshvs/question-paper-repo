@@ -4,7 +4,7 @@
 
 // Configuration
 const CONFIG = {
-    WORKER_URL: 'https://qpr-contribution-worker.qpr-iiserm.workers.dev',
+    WORKER_URL: 'https://qpr-contribution-worker.turingclub.workers.dev',
     GITHUB_CLIENT_ID: 'Ov23linzqUpdM2As790u',
     GITHUB_REPO_OWNER: 'IISERM',
     GITHUB_REPO_NAME: 'question-paper-repo',
@@ -16,6 +16,10 @@ const CONFIG = {
 let state = {
     token: null,
     username: null,
+    authType: null, // 'google' or 'github'
+    userEmail: null, // For Google auth
+    userName: null, // For Google auth (display name)
+    userPhoto: null, // For Google auth (profile photo)
     uploadGroups: [],
     userForkName: null,
 };
@@ -74,25 +78,48 @@ function checkAuthStatus() {
         return;
     }
 
+    // Check for GitHub OAuth callback
     if (token && username) {
         // Store credentials
         state.token = token;
         state.username = username;
+        state.authType = 'github';
         localStorage.setItem('github_token', token);
         localStorage.setItem('github_username', username);
+        localStorage.setItem('auth_type', 'github');
         
         // Clean URL
         window.history.replaceState({}, document.title, window.location.pathname);
         
         showAuthenticatedUI();
-    } else {
-        // Check localStorage
+        return;
+    }
+
+    // Check localStorage for existing auth
+    const authType = localStorage.getItem('auth_type');
+    
+    if (authType === 'google') {
+        // Restore Google auth state
+        const userEmail = localStorage.getItem('user_email');
+        const userName = localStorage.getItem('user_name');
+        const userPhoto = localStorage.getItem('user_photo');
+        
+        if (userEmail && userName) {
+            state.authType = 'google';
+            state.userEmail = userEmail;
+            state.userName = userName;
+            state.userPhoto = userPhoto;
+            showAuthenticatedUI();
+        }
+    } else if (authType === 'github') {
+        // Restore GitHub auth state
         const storedToken = localStorage.getItem('github_token');
         const storedUsername = localStorage.getItem('github_username');
         
         if (storedToken && storedUsername) {
             state.token = storedToken;
             state.username = storedUsername;
+            state.authType = 'github';
             showAuthenticatedUI();
         }
     }
@@ -100,6 +127,7 @@ function checkAuthStatus() {
 
 // Setup event listeners
 function setupEventListeners() {
+    document.getElementById('google-login-btn').addEventListener('click', initiateGoogleLogin);
     document.getElementById('github-login-btn').addEventListener('click', initiateGitHubLogin);
     document.getElementById('logout-btn').addEventListener('click', logout);
     document.getElementById('add-folder-btn').addEventListener('click', addUploadGroup);
@@ -107,6 +135,44 @@ function setupEventListeners() {
     document.getElementById('retry-btn').addEventListener('click', resetForm);
     document.getElementById('contribute-more-btn').addEventListener('click', resetForm);
     document.getElementById('copy-pr-link').addEventListener('click', copyPRLink);
+}
+
+// Initiate Google OAuth login (Firebase)
+async function initiateGoogleLogin() {
+    try {
+        const result = await auth.signInWithPopup(googleProvider);
+        const user = result.user;
+        
+        // Check if email is from allowed domain
+        const allowedDomain = 'iisermohali.ac.in';
+        if (!user.email.endsWith(`@${allowedDomain}`)) {
+            // Sign out immediately
+            await auth.signOut();
+            showError(`Access restricted to ${allowedDomain} email addresses only.\n\nYour email: ${user.email}\n\nPlease use your IISER Mohali institute email or sign in with GitHub for external contributions.`);
+            return;
+        }
+        
+        // Store Google auth info
+        state.authType = 'google';
+        state.userEmail = user.email;
+        state.userName = user.displayName || user.email.split('@')[0];
+        state.userPhoto = user.photoURL;
+        
+        // Store in localStorage
+        localStorage.setItem('auth_type', 'google');
+        localStorage.setItem('user_email', user.email);
+        localStorage.setItem('user_name', state.userName);
+        localStorage.setItem('user_photo', user.photoURL || '');
+        
+        console.log('Google sign-in successful:', user.email);
+        showAuthenticatedUI();
+        
+    } catch (error) {
+        console.error('Google sign-in error:', error);
+        if (error.code !== 'auth/popup-closed-by-user') {
+            showError(`Google sign-in failed: ${error.message}`);
+        }
+    }
 }
 
 // Initiate GitHub OAuth login
@@ -125,11 +191,31 @@ function initiateGitHubLogin() {
 }
 
 // Logout
-function logout() {
+async function logout() {
+    // Sign out from Firebase if using Google auth
+    if (state.authType === 'google') {
+        try {
+            await auth.signOut();
+        } catch (error) {
+            console.error('Firebase sign-out error:', error);
+        }
+    }
+    
+    // Clear state
     state.token = null;
     state.username = null;
+    state.authType = null;
+    state.userEmail = null;
+    state.userName = null;
+    state.userPhoto = null;
+    
+    // Clear localStorage
     localStorage.removeItem('github_token');
     localStorage.removeItem('github_username');
+    localStorage.removeItem('auth_type');
+    localStorage.removeItem('user_email');
+    localStorage.removeItem('user_name');
+    localStorage.removeItem('user_photo');
     
     document.getElementById('auth-section').style.display = 'block';
     document.getElementById('user-section').style.display = 'none';
@@ -138,7 +224,19 @@ function logout() {
 
 // Show authenticated UI
 function showAuthenticatedUI() {
-    document.getElementById('username').textContent = state.username;
+    const usernameElement = document.getElementById('username');
+    
+    if (state.authType === 'google') {
+        // Display Google user info
+        usernameElement.innerHTML = `
+            ${state.userPhoto ? `<img src="${state.userPhoto}" style="width: 24px; height: 24px; border-radius: 50%; margin-right: 8px; vertical-align: middle;">` : ''}
+            <strong>${state.userName}</strong> (${state.userEmail})
+        `;
+    } else {
+        // Display GitHub username
+        usernameElement.textContent = state.username;
+    }
+    
     document.getElementById('auth-section').style.display = 'none';
     document.getElementById('user-section').style.display = 'block';
     document.getElementById('upload-section').style.display = 'block';
@@ -342,7 +440,81 @@ async function handleSubmit(e) {
     const prTitle = document.getElementById('pr-title').value.trim();
     const prDescription = document.getElementById('pr-description').value.trim();
     
-    // Show progress
+    // Route to appropriate flow based on auth type
+    if (state.authType === 'google') {
+        await handleDirectContribution(prTitle, prDescription);
+    } else {
+        await handleGitHubContribution(prTitle, prDescription);
+    }
+}
+
+// Handle direct contribution (Google auth flow)
+async function handleDirectContribution(prTitle, prDescription) {
+    showProgress('Starting direct contribution...', 0);
+    
+    try {
+        // Prepare upload groups data
+        const uploadGroupsData = state.uploadGroups.map(group => {
+            const folderPath = document.getElementById(`${group.id}-path`).value.trim();
+            return {
+                folderPath: folderPath,
+                files: group.files.map(file => ({
+                    name: file.name,
+                    content: null, // Will be filled below
+                })),
+                fileObjects: group.files, // Keep file objects for base64 conversion
+            };
+        });
+        
+        // Convert files to base64
+        updateProgress('Preparing files...', 10);
+        for (const group of uploadGroupsData) {
+            for (let i = 0; i < group.files.length; i++) {
+                const base64Content = await fileToBase64(group.fileObjects[i]);
+                group.files[i].content = base64Content;
+            }
+            delete group.fileObjects; // Remove file objects before sending
+        }
+        
+        // Send to worker
+        updateProgress('Creating pull request...', 50);
+        
+        const response = await fetch(`${CONFIG.WORKER_URL}/api/contribute-direct`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                userEmail: state.userEmail,
+                userName: state.userName,
+                uploadGroups: uploadGroupsData,
+                prTitle: prTitle,
+                prDescription: prDescription,
+            }),
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to create pull request');
+        }
+        
+        const result = await response.json();
+        
+        updateProgress('Complete!', 100);
+        
+        // Show success
+        setTimeout(() => {
+            showSuccess(result.pr.html_url);
+        }, 500);
+        
+    } catch (error) {
+        console.error('Direct contribution error:', error);
+        showError(error.message || 'An unexpected error occurred');
+    }
+}
+
+// Handle GitHub contribution (existing fork-based flow)
+async function handleGitHubContribution(prTitle, prDescription) {
     showProgress('Starting contribution process...', 0);
     
     try {
@@ -424,8 +596,18 @@ async function handleSubmit(e) {
 // Validate form
 function validateForm() {
     // Check if authenticated
-    if (!state.token) {
-        return { valid: false, message: 'Please sign in with GitHub first' };
+    if (!state.authType) {
+        return { valid: false, message: 'Please sign in first (Google or GitHub)' };
+    }
+    
+    // Additional validation for Google auth
+    if (state.authType === 'google' && !state.userEmail) {
+        return { valid: false, message: 'Google authentication incomplete. Please sign in again.' };
+    }
+    
+    // Additional validation for GitHub auth
+    if (state.authType === 'github' && !state.token) {
+        return { valid: false, message: 'GitHub authentication incomplete. Please sign in again.' };
     }
     
     // Check if at least one group has files
