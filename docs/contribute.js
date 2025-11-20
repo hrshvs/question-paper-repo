@@ -1135,10 +1135,17 @@ function buildCompleteUploadGroupsList(allUploadedFiles) {
   }));
 }
 
-// UI State
+// ==========================================
+// UI STATE MANAGEMENT
+// ==========================================
+
 function showProgress(message, percent) {
   document.getElementById("upload-section").style.display = "none";
   document.getElementById("progress-section").style.display = "block";
+  updateProgress(message, percent);
+}
+
+function updateProgress(message, percent) {
   document.getElementById("progress-message").textContent = message;
   document.getElementById("progress-fill").style.width = `${percent}%`;
   document.getElementById("progress-percent").textContent = `${percent}%`;
