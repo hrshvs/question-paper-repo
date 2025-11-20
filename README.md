@@ -2,6 +2,10 @@
 
 Archive of question papers and exercise sheets from IISER Mohali courses. Collected by students over several years. Expect mixed quality (some scans aren’t OCR’d; some files aren’t PDFs).
 
+Always prefer to use the webiste for viewing and uploading files. The git methods are for advanced users who want to keep a local copy or contribute via CLI.  
+The link to [the website](https://iiserm.github.io/question-paper-repo/):  
+https://iiserm.github.io/question-paper-repo/
+
 For an older archive, see the [course files mirror](https://iiserm.github.io/course_files/).
 For more resources, Studocu hosts additional material: [IISER Mohali on Studocu](https://www.studocu.com/in/institution/indian-institute-of-science-education-and-research-mohali/30483).
 
