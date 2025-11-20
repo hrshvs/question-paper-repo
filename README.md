@@ -1,4 +1,7 @@
-# question-paper-repo
+# QPR (Question Paper Repo)
+
+https://github.com/user-attachments/assets/e4f24335-c6b0-49a4-a5f0-71db0b4f495b
+
 
 Archive of question papers and exercise sheets from IISER Mohali courses. Collected by students over several years. Expect mixed quality (some scans aren’t OCR’d; some files aren’t PDFs).
 
