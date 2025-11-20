@@ -1,20 +1,18 @@
-// Cache configuration
+// CONFIGURATION
 const CACHE_KEY = "qpr_data";
 const CACHE_TS_KEY = "qpr_timestamp";
-const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+const CACHE_DURATION = 3 * 24 * 60 * 60 * 1000; // 3 days
 
-// Theme toggle functionality
+// THEME MANAGEMENT
 function initThemeToggle() {
   const themeToggle = document.getElementById("theme-toggle");
   const themeText = document.getElementById("theme-text");
   const sunIcon = document.getElementById("theme-icon-sun");
   const moonIcon = document.getElementById("theme-icon-moon");
 
-  // Check for saved theme preference or default to dark mode
   const savedTheme = localStorage.getItem("theme") || "dark";
   document.documentElement.setAttribute("data-theme", savedTheme);
 
-  // Update button state
   function updateThemeButton(theme) {
     if (theme === "dark") {
       themeText.textContent = "Light";
@@ -29,7 +27,6 @@ function initThemeToggle() {
 
   updateThemeButton(savedTheme);
 
-  // Toggle theme on button click
   themeToggle.addEventListener("click", () => {
     const currentTheme = document.documentElement.getAttribute("data-theme");
     const newTheme = currentTheme === "dark" ? "light" : "dark";
@@ -40,7 +37,7 @@ function initThemeToggle() {
   });
 }
 
-// Main Initialization
+// MAIN APPLICATION LOGIC
 document.addEventListener("DOMContentLoaded", async () => {
   initThemeToggle();
 
@@ -51,15 +48,30 @@ document.addEventListener("DOMContentLoaded", async () => {
   const searchInput = document.getElementById("search-input");
   const clearSearchBtn = document.getElementById("clear-search");
 
-  // Get current path from URL
-  const urlParams = new URLSearchParams(window.location.search);
-  const currentPath = urlParams.get("path") || "";
-
   let fullData = null;
+  let allItems = []; // Flattened list for search
 
+  // --- HISTORY HANDLING (Back Button) ---
+  window.addEventListener("popstate", (event) => {
+    const state = event.state;
+    if (state && state.path !== undefined) {
+      renderCurrentView(state.path);
+    } else {
+      // Fallback to URL param
+      const params = new URLSearchParams(window.location.search);
+      renderCurrentView(params.get("path") || "");
+    }
+  });
+
+  // --- INITIALIZATION ---
   try {
-    // 1. Fetch Data (Cache First)
+    // 1. Load Data (Cache -> Network)
     fullData = await getRepositoryData();
+
+    // 2. Flatten data for search index
+    if (fullData && fullData.folders) {
+      allItems = flattenRepository(fullData.folders);
+    }
 
     loadingEl.style.display = "none";
 
@@ -68,30 +80,37 @@ document.addEventListener("DOMContentLoaded", async () => {
       lastUpdatedEl.textContent = date.toLocaleString();
     }
 
-    // 2. Initial Render
-    renderCurrentView(currentPath);
+    // 3. Render Initial View based on URL
+    const urlParams = new URLSearchParams(window.location.search);
+    renderCurrentView(urlParams.get("path") || "");
 
-    // 3. Setup Search
+    // 4. Setup Search Listener
     searchInput.addEventListener("input", (e) => {
       const query = e.target.value.trim();
 
       if (query.length > 0) {
         // Search Mode
         clearSearchBtn.style.display = "block";
-        const filtered = filterTree(fullData.folders, query);
-        treeEl.innerHTML = ""; // Clear current view
+        const results = searchRepository(allItems, query);
 
-        if (filtered.length === 0) {
+        treeEl.innerHTML = "";
+        treeEl.classList.add("search-mode");
+
+        if (results.length === 0) {
           treeEl.innerHTML =
-            '<p class="empty-message">No matching files or folders found.</p>';
+            '<p class="empty-message">No matching items found.</p>';
         } else {
-          // In search mode, we render the structure flattened or as is
-          renderTree(filtered, treeEl, "", true);
+          // Render top 100 results for performance
+          renderSearchResults(results.slice(0, 100), treeEl);
         }
       } else {
-        // Navigation Mode
+        // Restore Navigation Mode
         clearSearchBtn.style.display = "none";
-        renderCurrentView(currentPath);
+        treeEl.classList.remove("search-mode");
+
+        // Get current path from URL state, not input
+        const currentUrlParams = new URLSearchParams(window.location.search);
+        renderCurrentView(currentUrlParams.get("path") || "");
       }
     });
 
@@ -100,18 +119,38 @@ document.addEventListener("DOMContentLoaded", async () => {
       searchInput.dispatchEvent(new Event("input"));
     });
   } catch (error) {
-    console.error("Error loading data:", error);
+    console.error("Error:", error);
     loadingEl.style.display = "none";
-    errorEl.textContent = "Failed to load repository data. Try refreshing.";
+    errorEl.textContent = "Failed to load repository data. Please refresh.";
     errorEl.style.display = "block";
   }
 
-  // Helper: Data Fetching with Cache
+  // --- NAVIGATION FUNCTION (SPA) ---
+  // Attached to window so elements created outside this scope can call it
+  window.navigateTo = function (path) {
+    // Update URL
+    const newUrl = path
+      ? `?path=${encodeURIComponent(path)}`
+      : window.location.pathname;
+    window.history.pushState({ path }, "", newUrl);
+
+    // Clear search if user navigates
+    if (searchInput.value) {
+      searchInput.value = "";
+      clearSearchBtn.style.display = "none";
+      treeEl.classList.remove("search-mode");
+    }
+
+    renderCurrentView(path);
+  };
+
+  // --- DATA HELPER ---
   async function getRepositoryData() {
     const now = Date.now();
     const cachedData = localStorage.getItem(CACHE_KEY);
     const cachedTs = localStorage.getItem(CACHE_TS_KEY);
 
+    // Check Cache validity
     if (cachedData && cachedTs && now - parseInt(cachedTs) < CACHE_DURATION) {
       console.log("[Cache] Using cached data");
       return JSON.parse(cachedData);
@@ -126,47 +165,50 @@ document.addEventListener("DOMContentLoaded", async () => {
       localStorage.setItem(CACHE_KEY, JSON.stringify(data));
       localStorage.setItem(CACHE_TS_KEY, now.toString());
     } catch (e) {
-      console.warn("Cache quota exceeded");
+      console.warn("Quota exceeded, could not cache data");
     }
     return data;
   }
 
-  // Helper: Render specific path
+  // --- VIEW RENDERER ---
   function renderCurrentView(path) {
-    treeEl.innerHTML = ""; // IMPORTANT: Clear duplicate entries
+    treeEl.innerHTML = "";
 
     let currentFolder = null;
     if (path) {
       currentFolder = findFolderByPath(fullData.folders, path);
     }
 
-    // Update Title & Breadcrumbs
+    // Update Title & Description
     const intro = document.querySelector(".intro-section");
     if (currentFolder) {
       document.getElementById("page-title").textContent = currentFolder.name;
       document.getElementById("page-description").style.display = "none";
-
-      // Manage breadcrumbs
-      let breadcrumb = intro.querySelector(".breadcrumb");
-      if (breadcrumb) breadcrumb.remove();
-      addBreadcrumbs(path);
     } else {
-      // Root
+      // Root view
       if (path) {
+        // Path requested but not found in data
         treeEl.innerHTML = '<p class="empty-message">Folder not found.</p>';
         return;
       }
       document.getElementById("page-title").textContent =
         "Browse the Repository";
       document.getElementById("page-description").style.display = "block";
-      let breadcrumb = intro.querySelector(".breadcrumb");
-      if (breadcrumb) breadcrumb.remove();
     }
 
-    // Filter items
+    // Update Breadcrumbs
+    // Remove old breadcrumb if exists
+    const oldBreadcrumb = intro.querySelector(".breadcrumb");
+    if (oldBreadcrumb) oldBreadcrumb.remove();
+
+    // Add new breadcrumb
+    addBreadcrumbs(path);
+
+    // Determine items to show
     let itemsToRender = currentFolder
       ? currentFolder.children
       : fullData.folders;
+
     // Filter out hidden folders from root
     if (!currentFolder) {
       itemsToRender = itemsToRender.filter(
@@ -178,34 +220,73 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 });
 
-// --- UTILITY FUNCTIONS ---
+// SEARCH & UTILITY FUNCTIONS
 
-function filterTree(nodes, query) {
+// Recursively flatten the tree into a list of {name, path, isFile}
+function flattenRepository(folders, parentPath = "") {
+  let items = [];
+  folders.forEach((item) => {
+    const fullPath =
+      item.path || (parentPath ? `${parentPath}/${item.name}` : item.name);
+
+    // Add the item itself
+    items.push({ ...item, path: fullPath });
+
+    // Add children
+    if (item.children) {
+      items = items.concat(flattenRepository(item.children, fullPath));
+    }
+  });
+  return items;
+}
+
+// Fuzzy search with scoring
+function searchRepository(items, query) {
   const lowerQuery = query.toLowerCase();
+  // Split by space or slash to handle "Math/201" or "Math 201"
+  const terms = lowerQuery.split(/[\s/]+/).filter((t) => t.length > 0);
 
-  return nodes
-    .map((node) => {
-      // Create shallow copy
-      const newNode = { ...node };
-      const matchesSelf = newNode.name.toLowerCase().includes(lowerQuery);
+  if (terms.length === 0) return [];
 
-      if (newNode.isFile) {
-        return matchesSelf ? newNode : null;
-      }
+  return items
+    .map((item) => {
+      const name = item.name.toLowerCase();
+      const path = item.path.toLowerCase();
+      let score = 0;
 
-      // Recurse for folders
-      if (newNode.children) {
-        const filteredChildren = filterTree(newNode.children, query);
-        if (filteredChildren.length > 0) {
-          newNode.children = filteredChildren;
-          return newNode;
-        }
-      }
+      // 1. STRICT FILTER: All terms must appear somewhere in the path
+      const allTermsMatch = terms.every((term) => path.includes(term));
+      if (!allTermsMatch) return null;
 
-      // Return folder if name matches (even if empty children matching query)
-      return matchesSelf ? newNode : null;
+      // 2. SCORING ALGORITHM
+
+      // Exact name match gets huge bonus
+      if (name === lowerQuery) score += 100;
+      // Name starts with query
+      else if (name.startsWith(lowerQuery)) score += 50;
+
+      // Path starts with query (good for "Math/201")
+      if (path.startsWith(lowerQuery)) score += 40;
+
+      // Bonus for terms appearing in the filename specifically
+      terms.forEach((term) => {
+        if (name.includes(term)) score += 10;
+        if (name.startsWith(term)) score += 5;
+      });
+
+      // Penalize depth (we want top-level matches first)
+      // Count slashes: fewer slashes = higher up
+      const depth = (path.match(/\//g) || []).length;
+      score -= depth * 3;
+
+      // Slight preference for folders if everything else is equal
+      if (!item.isFile) score += 2;
+
+      return { item, score };
     })
-    .filter((n) => n !== null);
+    .filter((r) => r !== null)
+    .sort((a, b) => b.score - a.score) // Sort descending by score
+    .map((r) => r.item);
 }
 
 function findFolderByPath(folders, path) {
@@ -222,45 +303,60 @@ function findFolderByPath(folders, path) {
   return folder;
 }
 
+// DOM ELEMENT CREATION
+
 function addBreadcrumbs(currentPath) {
   const introSection = document.querySelector(".intro-section");
   const breadcrumbDiv = document.createElement("div");
   breadcrumbDiv.className = "breadcrumb";
 
-  const parts = currentPath.split("/");
-  let pathSoFar = "";
-
   // Home link
   const homeLink = document.createElement("a");
-  homeLink.href = "index.html";
+  homeLink.href = "#";
   homeLink.textContent = "Home";
+  homeLink.onclick = (e) => {
+    e.preventDefault();
+    window.navigateTo("");
+  };
   breadcrumbDiv.appendChild(homeLink);
 
-  parts.forEach((part, index) => {
-    const separator = document.createElement("span");
-    separator.textContent = " / ";
-    separator.className = "breadcrumb-separator";
-    breadcrumbDiv.appendChild(separator);
+  if (currentPath) {
+    const parts = currentPath.split("/");
+    let pathSoFar = "";
 
-    pathSoFar += (pathSoFar ? "/" : "") + part;
+    parts.forEach((part, index) => {
+      const separator = document.createElement("span");
+      separator.textContent = " / ";
+      separator.className = "breadcrumb-separator";
+      breadcrumbDiv.appendChild(separator);
 
-    if (index === parts.length - 1) {
-      const current = document.createElement("span");
-      current.textContent = part;
-      current.className = "breadcrumb-current";
-      breadcrumbDiv.appendChild(current);
-    } else {
-      const link = document.createElement("a");
-      link.href = `index.html?path=${encodeURIComponent(pathSoFar)}`;
-      link.textContent = part;
-      breadcrumbDiv.appendChild(link);
-    }
-  });
+      pathSoFar += (pathSoFar ? "/" : "") + part;
+      const thisPath = pathSoFar; // Capture for closure
+
+      if (index === parts.length - 1) {
+        // Current item (text only)
+        const current = document.createElement("span");
+        current.textContent = part;
+        current.className = "breadcrumb-current";
+        breadcrumbDiv.appendChild(current);
+      } else {
+        // Parent item (link)
+        const link = document.createElement("a");
+        link.href = `?path=${encodeURIComponent(thisPath)}`;
+        link.textContent = part;
+        link.onclick = (e) => {
+          e.preventDefault();
+          window.navigateTo(thisPath);
+        };
+        breadcrumbDiv.appendChild(link);
+      }
+    });
+  }
 
   introSection.appendChild(breadcrumbDiv);
 }
 
-function renderTree(items, parentElement, basePath = "", isSearch = false) {
+function renderTree(items, parentElement, basePath = "") {
   if (!items || items.length === 0) {
     const emptyMsg = document.createElement("p");
     emptyMsg.textContent = "No items found.";
@@ -279,27 +375,22 @@ function renderTree(items, parentElement, basePath = "", isSearch = false) {
     if (item.isFile) {
       parentElement.appendChild(createFileElement(item));
     } else {
-      // If searching, we might want to show path context, but for now standard tree
-      const folderEl = createFolderElement(item, basePath);
-      parentElement.appendChild(folderEl);
-
-      // In search mode, if we matched a folder, we should probably render its children too
-      // if they were filtered. This recursion happens here visually.
-      if (isSearch && item.children && item.children.length > 0) {
-        const childrenContainer = document.createElement("div");
-        childrenContainer.style.marginLeft = "1.5rem";
-        childrenContainer.style.borderLeft = "1px solid var(--border)";
-        renderTree(
-          item.children,
-          childrenContainer,
-          basePath ? `${basePath}/${item.name}` : item.name,
-          true,
-        );
-        parentElement.appendChild(childrenContainer);
-      }
+      parentElement.appendChild(createFolderElement(item, basePath));
     }
   });
 }
+
+function renderSearchResults(items, container) {
+  items.forEach((item) => {
+    if (item.isFile) {
+      container.appendChild(createFileSearchElement(item));
+    } else {
+      container.appendChild(createFolderSearchElement(item));
+    }
+  });
+}
+
+// --- ELEMENT FACTORIES ---
 
 function createFolderElement(folder, basePath) {
   const div = document.createElement("div");
@@ -308,11 +399,13 @@ function createFolderElement(folder, basePath) {
   const link = document.createElement("a");
   link.className = "folder-link";
   const newPath = basePath ? `${basePath}/${folder.name}` : folder.name;
-  link.href = `index.html?path=${encodeURIComponent(newPath)}`;
 
-  // Folder Icon & Name
-  const name = document.createElement("span");
-  name.className = "folder-name";
+  // SPA Navigation
+  link.href = `?path=${encodeURIComponent(newPath)}`;
+  link.onclick = (e) => {
+    e.preventDefault();
+    window.navigateTo(newPath);
+  };
 
   const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   icon.setAttribute("class", "item-icon folder-icon");
@@ -321,10 +414,11 @@ function createFolderElement(folder, basePath) {
   icon.innerHTML =
     '<path d="M.54 3.87L.5 3a2 2 0 0 1 2-2h3.672a2 2 0 0 1 1.414.586l.828.828A2 2 0 0 0 9.828 3h3.982a2 2 0 0 1 1.992 2.181l-.637 7A2 2 0 0 1 13.174 14H2.826a2 2 0 0 1-1.991-1.819l-.637-7a1.99 1.99 0 0 1 .342-1.31zM2.19 4a1 1 0 0 0-.996 1.09l.637 7a1 1 0 0 0 .995.91h10.348a1 1 0 0 0 .995-.91l.637-7A1 1 0 0 0 13.81 4H2.19z"/>';
 
+  const name = document.createElement("span");
+  name.className = "folder-name";
   name.appendChild(icon);
   name.appendChild(document.createTextNode(folder.name));
 
-  // Count
   const count = document.createElement("span");
   count.className = "folder-count";
   const itemCount = folder.children ? folder.children.length : 0;
@@ -332,6 +426,48 @@ function createFolderElement(folder, basePath) {
 
   link.appendChild(name);
   link.appendChild(count);
+  div.appendChild(link);
+
+  return div;
+}
+
+function createFolderSearchElement(folder) {
+  const div = document.createElement("div");
+  div.className = "folder-item";
+
+  const link = document.createElement("a");
+  link.className = "folder-link";
+
+  // SPA Navigation
+  link.href = `?path=${encodeURIComponent(folder.path)}`;
+  link.onclick = (e) => {
+    e.preventDefault();
+    window.navigateTo(folder.path);
+  };
+
+  const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  icon.setAttribute("class", "item-icon folder-icon");
+  icon.setAttribute("viewBox", "0 0 16 16");
+  icon.setAttribute("fill", "currentColor");
+  icon.innerHTML =
+    '<path d="M.54 3.87L.5 3a2 2 0 0 1 2-2h3.672a2 2 0 0 1 1.414.586l.828.828A2 2 0 0 0 9.828 3h3.982a2 2 0 0 1 1.992 2.181l-.637 7A2 2 0 0 1 13.174 14H2.826a2 2 0 0 1-1.991-1.819l-.637-7a1.99 1.99 0 0 1 .342-1.31zM2.19 4a1 1 0 0 0-.996 1.09l.637 7a1 1 0 0 0 .995.91h10.348a1 1 0 0 0 .995-.91l.637-7A1 1 0 0 0 13.81 4H2.19z"/>';
+
+  const meta = document.createElement("div");
+  meta.className = "search-result-meta";
+
+  const name = document.createElement("span");
+  name.className = "folder-name";
+  name.textContent = folder.name;
+
+  const pathEl = document.createElement("span");
+  pathEl.className = "search-result-path";
+  pathEl.textContent = folder.path;
+
+  meta.appendChild(name);
+  meta.appendChild(pathEl);
+
+  link.appendChild(icon);
+  link.appendChild(meta);
   div.appendChild(link);
 
   return div;
@@ -346,8 +482,6 @@ function createFileElement(file) {
   const isPdf = fileName.endsWith(".pdf");
 
   link.className = isPdf ? "file-link" : "file-link file-link-other";
-  // Use raw.githubusercontent or local path depending on environment
-  // Using relative path from data.json assuming it's generated correctly
   link.href = `https://github.com/IISERM/question-paper-repo/raw/main/${file.path}`;
   link.target = "_blank";
   link.rel = "noopener noreferrer";
@@ -355,6 +489,7 @@ function createFileElement(file) {
   const name = document.createElement("span");
   name.className = "file-name";
 
+  // Icon selection
   const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   icon.setAttribute(
     "class",
@@ -384,6 +519,65 @@ function createFileElement(file) {
   name.appendChild(document.createTextNode(file.name));
 
   link.appendChild(name);
+  div.appendChild(link);
+
+  return div;
+}
+
+function createFileSearchElement(file) {
+  const div = document.createElement("div");
+  div.className = "file-item";
+
+  const link = document.createElement("a");
+  const fileName = file.name.toLowerCase();
+  const isPdf = fileName.endsWith(".pdf");
+
+  link.className = isPdf ? "file-link" : "file-link file-link-other";
+  link.href = `https://github.com/IISERM/question-paper-repo/raw/main/${file.path}`;
+  link.target = "_blank";
+  link.rel = "noopener noreferrer";
+
+  const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  icon.setAttribute(
+    "class",
+    isPdf ? "item-icon file-icon" : "item-icon file-icon file-icon-other",
+  );
+  icon.setAttribute("viewBox", "0 0 16 16");
+  icon.setAttribute("fill", "currentColor");
+
+  if (isPdf) {
+    icon.innerHTML =
+      '<path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2zM9.5 3A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5v2z"/><path d="M4.603 14.087a.81.81 0 0 1-.438-.42c-.195-.388-.13-.776.08-1.102.198-.307.526-.568.897-.787a7.68 7.68 0 0 1 1.482-.645 19.697 19.697 0 0 0 1.062-2.227 7.269 7.269 0 0 1-.43-1.295c-.086-.4-.119-.796-.046-1.136.075-.354.274-.672.65-.823.192-.077.4-.12.602-.077a.7.7 0 0 1 .477.365c.088.164.12.356.127.538.007.188-.012.396-.047.614-.084.51-.27 1.134-.52 1.794a10.954 10.954 0 0 0 .98 1.686 5.753 5.753 0 0 1 1.334.05c.364.066.734.195.96.465.12.144.193.32.2.518.007.192-.047.382-.138.563a1.04 1.04 0 0 1-.354.416.856.856 0 0 1-.51.138c-.331-.014-.654-.196-.933-.417a5.712 5.712 0 0 1-.911-.95 11.651 11.651 0 0 0-1.997.406 11.307 11.307 0 0 1-1.02 1.51c-.292.35-.609.656-.927.787a.793.793 0 0 1-.58.029zm1.379-1.901c-.166.076-.32.156-.459.238-.328.194-.541.383-.647.547-.094.145-.096.25-.04.361.01.022.02.036.026.044a.266.266 0 0 0 .035-.012c.137-.056.355-.235.635-.572a8.18 8.18 0 0 0 .45-.606zm1.64-1.33a12.71 12.71 0 0 1 1.01-.193 11.744 11.744 0 0 1-.51-.858 20.801 20.801 0 0 1-.5 1.05zm2.446.45c.15.163.296.3.435.41.24.19.407.253.498.256a.107.107 0 0 0 .07-.015.307.307 0 0 0 .094-.125.436.436 0 0 0 .059-.2.095.095 0 0 0-.026-.063c-.052-.062-.2-.152-.518-.209a3.876 3.876 0 0 0-.612-.053zM8.078 7.8a6.7 6.7 0 0 0 .2-.828c.031-.188.043-.343.038-.465a.613.613 0 0 0-.032-.198.517.517 0 0 0-.145.04c-.087.035-.158.106-.196.283-.04.192-.03.469.046.822.024.111.054.227.09.346z"/>';
+  } else if (
+    fileName.endsWith(".jpg") ||
+    fileName.endsWith(".jpeg") ||
+    fileName.endsWith(".png") ||
+    fileName.endsWith(".gif") ||
+    fileName.endsWith(".webp")
+  ) {
+    icon.innerHTML =
+      '<path d="M6.002 5.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z"/><path d="M2.002 1a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V3a2 2 0 0 0-2-2h-12zm12 1a1 1 0 0 1 1 1v6.5l-3.777-1.947a.5.5 0 0 0-.577.093l-3.71 3.71-2.66-1.772a.5.5 0 0 0-.63.062L1.002 12V3a1 1 0 0 1 1-1h12z"/>';
+  } else {
+    icon.innerHTML =
+      '<path d="M9.293 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4.707A1 1 0 0 0 13.707 4L10 .293A1 1 0 0 0 9.293 0zM9.5 3.5v-2l3 3h-2a1 1 0 0 1-1-1zM4.5 9a.5.5 0 0 1 0-1h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5zm.5 2.5a.5.5 0 0 1 0-1h4a.5.5 0 0 1 0 1h-4z"/>';
+  }
+
+  const meta = document.createElement("div");
+  meta.className = "search-result-meta";
+
+  const name = document.createElement("span");
+  name.className = "file-name";
+  name.textContent = file.name;
+
+  const pathEl = document.createElement("span");
+  pathEl.className = "search-result-path";
+  pathEl.textContent = file.path;
+
+  meta.appendChild(name);
+  meta.appendChild(pathEl);
+
+  link.appendChild(icon);
+  link.appendChild(meta);
   div.appendChild(link);
 
   return div;

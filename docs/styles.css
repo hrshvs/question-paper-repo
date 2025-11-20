@@ -1188,7 +1188,8 @@ code {
 /* Search Container */
 .search-container {
   position: relative;
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
+  margin-top: 1.5rem;
   max-width: 600px;
 }
 
@@ -1234,6 +1235,33 @@ code {
 
 #clear-search:hover {
   color: var(--primary-color);
+}
+
+.search-result-meta {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0; /* Fix truncation in flexbox */
+}
+
+.search-result-path {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
+
+/* Adjust item layout for search results */
+.search-mode .folder-link,
+.search-mode .file-link {
+  align-items: center; /* Center icon vertically */
+}
+
+.search-mode .folder-name,
+.search-mode .file-name {
+  display: block; /* Stack name and path */
 }
 
 /* Color variables for success and error */
@@ -1290,4 +1318,3 @@ code {
     margin-top: 0;
   }
 }
-

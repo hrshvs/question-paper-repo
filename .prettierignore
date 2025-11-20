@@ -1,0 +1,15 @@
+# Dependencies
+node_modules
+package-lock.json
+
+# Build outputs
+dist
+build
+coverage
+
+# Worker specific
+.wrangler
+worker/
+
+# Generated data
+docs/data.json
