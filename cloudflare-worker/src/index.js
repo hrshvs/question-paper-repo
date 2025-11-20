@@ -3,14 +3,14 @@
  * Handles OAuth and GitHub API operations for the contribution system
  */
 
-import { getInstallationToken } from './github-app.js';
+import { getInstallationToken } from "./github-app.js";
 
 // CORS headers for all responses
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*', // Will be restricted in handleRequest
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-  'Access-Control-Max-Age': '86400',
+  "Access-Control-Allow-Origin": "*", // Will be restricted in handleRequest
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+  "Access-Control-Max-Age": "86400",
 };
 
 export default {
@@ -18,79 +18,84 @@ export default {
     try {
       return await handleRequest(request, env);
     } catch (error) {
-      console.error('Top-level error:', error);
-      console.error('Error stack:', error.stack);
-      return new Response(JSON.stringify({ 
-        error: error.message,
-        stack: error.stack 
-      }), {
-        status: 500,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-        },
-      });
+      console.error("Top-level error:", error);
+      console.error("Error stack:", error.stack);
+      return new Response(
+        JSON.stringify({
+          error: error.message,
+          stack: error.stack,
+        }),
+        {
+          status: 500,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        }
+      );
     }
   },
 };
 
 async function handleRequest(request, env) {
   const url = new URL(request.url);
-  
+
   // Set proper CORS origin
   const allowedOrigins = [
-    'https://iiserm.github.io',
-    'http://localhost:8000', // For local testing
-    'http://127.0.0.1:8000', // Alternative localhost
+    "https://iiserm.github.io",
+    "http://localhost:8000", // For local testing
+    "http://127.0.0.1:8000", // Alternative localhost
   ];
-  
-  const origin = request.headers.get('Origin');
+
+  const origin = request.headers.get("Origin");
   const responseHeaders = {
     ...corsHeaders,
-    'Access-Control-Allow-Origin': allowedOrigins.includes(origin) ? origin : allowedOrigins[0],
+    "Access-Control-Allow-Origin": allowedOrigins.includes(origin)
+      ? origin
+      : allowedOrigins[0],
   };
 
   // Handle OPTIONS request
-  if (request.method === 'OPTIONS') {
+  if (request.method === "OPTIONS") {
     return new Response(null, { headers: responseHeaders });
   }
 
   try {
     // Route handling
-    if (url.pathname === '/auth/callback') {
+    if (url.pathname === "/auth/callback") {
       return handleAuthCallback(url, env, responseHeaders);
     }
-    
-    if (url.pathname === '/api/fork') {
+
+    if (url.pathname === "/api/fork") {
       return handleFork(request, env, responseHeaders);
     }
-    
-    if (url.pathname === '/api/create-branch') {
+
+    if (url.pathname === "/api/create-branch") {
       return handleCreateBranch(request, env, responseHeaders);
     }
-    
-    if (url.pathname === '/api/upload-file') {
+
+    if (url.pathname === "/api/upload-file") {
       return handleUploadFile(request, env, responseHeaders);
     }
-    
-    if (url.pathname === '/api/create-pr') {
+
+    if (url.pathname === "/api/create-pr") {
       return handleCreatePR(request, env, responseHeaders);
     }
-    
-    if (url.pathname === '/api/check-fork') {
+
+    if (url.pathname === "/api/check-fork") {
       return handleCheckFork(request, env, responseHeaders);
     }
-    
-    if (url.pathname === '/api/contribute-direct') {
+
+    if (url.pathname === "/api/contribute-direct") {
       return handleDirectContribution(request, env, responseHeaders);
     }
 
-    return new Response('Not Found', { status: 404, headers: responseHeaders });
+    return new Response("Not Found", { status: 404, headers: responseHeaders });
   } catch (error) {
-    console.error('Error:', error);
+    console.error("Error:", error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
-      headers: { ...responseHeaders, 'Content-Type': 'application/json' },
+      headers: { ...responseHeaders, "Content-Type": "application/json" },
     });
   }
 }
@@ -99,74 +104,81 @@ async function handleRequest(request, env) {
  * Handle GitHub OAuth callback
  */
 async function handleAuthCallback(url, env, headers) {
-  const code = url.searchParams.get('code');
-  const state = url.searchParams.get('state');
-  
+  const code = url.searchParams.get("code");
+  const state = url.searchParams.get("state");
+
   if (!code) {
-    return new Response('Missing authorization code', { status: 400, headers });
+    return new Response("Missing authorization code", { status: 400, headers });
   }
 
   try {
-    console.log('Exchanging code for token...');
-    console.log('Client ID:', env.GITHUB_CLIENT_ID);
-    
-    // Exchange code for access token
-    const tokenResponse = await fetch('https://github.com/login/oauth/access_token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: JSON.stringify({
-        client_id: env.GITHUB_CLIENT_ID,
-        client_secret: env.GITHUB_CLIENT_SECRET,
-        code: code,
-      }),
-    });
+    console.log("Exchanging code for token...");
+    console.log("Client ID:", env.GITHUB_CLIENT_ID);
 
-    console.log('Token response status:', tokenResponse.status);
+    // Exchange code for access token
+    const tokenResponse = await fetch(
+      "https://github.com/login/oauth/access_token",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          client_id: env.GITHUB_CLIENT_ID,
+          client_secret: env.GITHUB_CLIENT_SECRET,
+          code: code,
+        }),
+      }
+    );
+
+    console.log("Token response status:", tokenResponse.status);
     const responseText = await tokenResponse.text();
-    console.log('Token response body:', responseText);
-    
+    console.log("Token response body:", responseText);
+
     const tokenData = JSON.parse(responseText);
-    
+
     if (tokenData.error) {
-      console.error('GitHub error:', tokenData.error, tokenData.error_description);
+      console.error(
+        "GitHub error:",
+        tokenData.error,
+        tokenData.error_description
+      );
       throw new Error(tokenData.error_description || tokenData.error);
     }
 
     // Get user info
-    console.log('Getting user info...');
-    const userResponse = await fetch('https://api.github.com/user', {
+    console.log("Getting user info...");
+    const userResponse = await fetch("https://api.github.com/user", {
       headers: {
-        'Authorization': `Bearer ${tokenData.access_token}`,
-        'Accept': 'application/vnd.github.v3+json',
-        'User-Agent': 'QPR-Contribution-Portal',
+        Authorization: `Bearer ${tokenData.access_token}`,
+        Accept: "application/vnd.github.v3+json",
+        "User-Agent": "QPR-Contribution-Portal",
       },
     });
 
-    console.log('User response status:', userResponse.status);
+    console.log("User response status:", userResponse.status);
     const userResponseText = await userResponse.text();
-    console.log('User response body:', userResponseText);
-    
+    console.log("User response body:", userResponseText);
+
     const userData = JSON.parse(userResponseText);
 
     // Redirect back to frontend with token
-    console.log('Redirecting to frontend with username:', userData.login);
+    console.log("Redirecting to frontend with username:", userData.login);
     const redirectUrl = new URL(`${env.FRONTEND_URL}/docs/contribute.html`);
-    redirectUrl.searchParams.set('token', tokenData.access_token);
-    redirectUrl.searchParams.set('username', userData.login);
-    if (state) redirectUrl.searchParams.set('state', state);
+    redirectUrl.searchParams.set("token", tokenData.access_token);
+    redirectUrl.searchParams.set("username", userData.login);
+    if (state) redirectUrl.searchParams.set("state", state);
 
-    console.log('Redirect URL:', redirectUrl.toString());
+    console.log("Redirect URL:", redirectUrl.toString());
     return Response.redirect(redirectUrl.toString(), 302);
   } catch (error) {
-    console.error('Caught error in handleAuthCallback:', error);
-    console.error('Error message:', error.message);
-    console.error('Error stack:', error.stack);
+    console.error("Caught error in handleAuthCallback:", error);
+    console.error("Error message:", error.message);
+    console.error("Error stack:", error.stack);
     const errorUrl = new URL(`${env.FRONTEND_URL}/docs/contribute.html`);
-    errorUrl.searchParams.set('error', error.message);
-    console.log('Redirecting to error URL:', errorUrl.toString());
+    errorUrl.searchParams.set("error", error.message);
+    console.log("Redirecting to error URL:", errorUrl.toString());
     return Response.redirect(errorUrl.toString(), 302);
   }
 }
@@ -175,57 +187,60 @@ async function handleAuthCallback(url, env, headers) {
  * Check if user has already forked the repository
  */
 async function handleCheckFork(request, env, headers) {
-  const authHeader = request.headers.get('Authorization');
+  const authHeader = request.headers.get("Authorization");
   if (!authHeader) {
-    return new Response(JSON.stringify({ error: 'Missing authorization' }), {
+    return new Response(JSON.stringify({ error: "Missing authorization" }), {
       status: 401,
-      headers: { ...headers, 'Content-Type': 'application/json' },
+      headers: { ...headers, "Content-Type": "application/json" },
     });
   }
 
-  const token = authHeader.replace('Bearer ', '');
-  
+  const token = authHeader.replace("Bearer ", "");
+
   try {
     // Get authenticated user
-    const userResponse = await fetch('https://api.github.com/user', {
+    const userResponse = await fetch("https://api.github.com/user", {
       headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/vnd.github.v3+json',
-        'User-Agent': 'QPR-Contribution-Portal',
+        Authorization: `Bearer ${token}`,
+        Accept: "application/vnd.github.v3+json",
+        "User-Agent": "QPR-Contribution-Portal",
       },
     });
-    
+
     const userData = await userResponse.json();
-    
+
     // Check if fork exists
     const forkResponse = await fetch(
       `https://api.github.com/repos/${userData.login}/${env.GITHUB_REPO_NAME}`,
       {
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/vnd.github.v3+json',
-          'User-Agent': 'QPR-Contribution-Portal',
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github.v3+json",
+          "User-Agent": "QPR-Contribution-Portal",
         },
       }
     );
 
     if (forkResponse.status === 200) {
       const forkData = await forkResponse.json();
-      return new Response(JSON.stringify({ 
-        exists: true, 
-        fork: forkData 
-      }), {
-        headers: { ...headers, 'Content-Type': 'application/json' },
-      });
+      return new Response(
+        JSON.stringify({
+          exists: true,
+          fork: forkData,
+        }),
+        {
+          headers: { ...headers, "Content-Type": "application/json" },
+        }
+      );
     }
 
     return new Response(JSON.stringify({ exists: false }), {
-      headers: { ...headers, 'Content-Type': 'application/json' },
+      headers: { ...headers, "Content-Type": "application/json" },
     });
   } catch (error) {
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
-      headers: { ...headers, 'Content-Type': 'application/json' },
+      headers: { ...headers, "Content-Type": "application/json" },
     });
   }
 }
@@ -234,26 +249,26 @@ async function handleCheckFork(request, env, headers) {
  * Fork the repository
  */
 async function handleFork(request, env, headers) {
-  const authHeader = request.headers.get('Authorization');
+  const authHeader = request.headers.get("Authorization");
   if (!authHeader) {
-    return new Response(JSON.stringify({ error: 'Missing authorization' }), {
+    return new Response(JSON.stringify({ error: "Missing authorization" }), {
       status: 401,
-      headers: { ...headers, 'Content-Type': 'application/json' },
+      headers: { ...headers, "Content-Type": "application/json" },
     });
   }
 
-  const token = authHeader.replace('Bearer ', '');
+  const token = authHeader.replace("Bearer ", "");
 
   try {
     // Fork the repository
     const forkResponse = await fetch(
       `https://api.github.com/repos/${env.GITHUB_REPO_OWNER}/${env.GITHUB_REPO_NAME}/forks`,
       {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/vnd.github.v3+json',
-          'User-Agent': 'QPR-Contribution-Portal',
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github.v3+json",
+          "User-Agent": "QPR-Contribution-Portal",
         },
       }
     );
@@ -261,19 +276,19 @@ async function handleFork(request, env, headers) {
     const forkData = await forkResponse.json();
 
     if (forkResponse.status !== 202 && forkResponse.status !== 200) {
-      throw new Error(forkData.message || 'Failed to fork repository');
+      throw new Error(forkData.message || "Failed to fork repository");
     }
 
     // Wait a bit for fork to be ready
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise((resolve) => setTimeout(resolve, 2000));
 
     return new Response(JSON.stringify(forkData), {
-      headers: { ...headers, 'Content-Type': 'application/json' },
+      headers: { ...headers, "Content-Type": "application/json" },
     });
   } catch (error) {
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
-      headers: { ...headers, 'Content-Type': 'application/json' },
+      headers: { ...headers, "Content-Type": "application/json" },
     });
   }
 }
@@ -282,26 +297,29 @@ async function handleFork(request, env, headers) {
  * Create a new branch in the forked repository
  */
 async function handleCreateBranch(request, env, headers) {
-  const authHeader = request.headers.get('Authorization');
+  const authHeader = request.headers.get("Authorization");
   if (!authHeader) {
-    return new Response(JSON.stringify({ error: 'Missing authorization' }), {
+    return new Response(JSON.stringify({ error: "Missing authorization" }), {
       status: 401,
-      headers: { ...headers, 'Content-Type': 'application/json' },
+      headers: { ...headers, "Content-Type": "application/json" },
     });
   }
 
-  const token = authHeader.replace('Bearer ', '');
+  const token = authHeader.replace("Bearer ", "");
   const { owner, repo, branchName } = await request.json();
 
   try {
     // Get the default branch reference
-    const repoResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/vnd.github.v3+json',
-        'User-Agent': 'QPR-Contribution-Portal',
-      },
-    });
+    const repoResponse = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github.v3+json",
+          "User-Agent": "QPR-Contribution-Portal",
+        },
+      }
+    );
 
     const repoData = await repoResponse.json();
     const defaultBranch = repoData.default_branch;
@@ -311,9 +329,9 @@ async function handleCreateBranch(request, env, headers) {
       `https://api.github.com/repos/${owner}/${repo}/git/ref/heads/${defaultBranch}`,
       {
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/vnd.github.v3+json',
-          'User-Agent': 'QPR-Contribution-Portal',
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github.v3+json",
+          "User-Agent": "QPR-Contribution-Portal",
         },
       }
     );
@@ -325,12 +343,12 @@ async function handleCreateBranch(request, env, headers) {
     const createBranchResponse = await fetch(
       `https://api.github.com/repos/${owner}/${repo}/git/refs`,
       {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/vnd.github.v3+json',
-          'Content-Type': 'application/json',
-          'User-Agent': 'QPR-Contribution-Portal',
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github.v3+json",
+          "Content-Type": "application/json",
+          "User-Agent": "QPR-Contribution-Portal",
         },
         body: JSON.stringify({
           ref: `refs/heads/${branchName}`,
@@ -342,16 +360,16 @@ async function handleCreateBranch(request, env, headers) {
     const branchData = await createBranchResponse.json();
 
     if (createBranchResponse.status !== 201) {
-      throw new Error(branchData.message || 'Failed to create branch');
+      throw new Error(branchData.message || "Failed to create branch");
     }
 
     return new Response(JSON.stringify(branchData), {
-      headers: { ...headers, 'Content-Type': 'application/json' },
+      headers: { ...headers, "Content-Type": "application/json" },
     });
   } catch (error) {
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
-      headers: { ...headers, 'Content-Type': 'application/json' },
+      headers: { ...headers, "Content-Type": "application/json" },
     });
   }
 }
@@ -360,15 +378,15 @@ async function handleCreateBranch(request, env, headers) {
  * Upload a file to the repository
  */
 async function handleUploadFile(request, env, headers) {
-  const authHeader = request.headers.get('Authorization');
+  const authHeader = request.headers.get("Authorization");
   if (!authHeader) {
-    return new Response(JSON.stringify({ error: 'Missing authorization' }), {
+    return new Response(JSON.stringify({ error: "Missing authorization" }), {
       status: 401,
-      headers: { ...headers, 'Content-Type': 'application/json' },
+      headers: { ...headers, "Content-Type": "application/json" },
     });
   }
 
-  const token = authHeader.replace('Bearer ', '');
+  const token = authHeader.replace("Bearer ", "");
   const { owner, repo, path, content, message, branch } = await request.json();
 
   try {
@@ -376,12 +394,12 @@ async function handleUploadFile(request, env, headers) {
     const uploadResponse = await fetch(
       `https://api.github.com/repos/${owner}/${repo}/contents/${path}`,
       {
-        method: 'PUT',
+        method: "PUT",
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/vnd.github.v3+json',
-          'Content-Type': 'application/json',
-          'User-Agent': 'QPR-Contribution-Portal',
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github.v3+json",
+          "Content-Type": "application/json",
+          "User-Agent": "QPR-Contribution-Portal",
         },
         body: JSON.stringify({
           message: message,
@@ -394,16 +412,16 @@ async function handleUploadFile(request, env, headers) {
     const uploadData = await uploadResponse.json();
 
     if (uploadResponse.status !== 201 && uploadResponse.status !== 200) {
-      throw new Error(uploadData.message || 'Failed to upload file');
+      throw new Error(uploadData.message || "Failed to upload file");
     }
 
     return new Response(JSON.stringify(uploadData), {
-      headers: { ...headers, 'Content-Type': 'application/json' },
+      headers: { ...headers, "Content-Type": "application/json" },
     });
   } catch (error) {
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
-      headers: { ...headers, 'Content-Type': 'application/json' },
+      headers: { ...headers, "Content-Type": "application/json" },
     });
   }
 }
@@ -412,15 +430,15 @@ async function handleUploadFile(request, env, headers) {
  * Create a pull request
  */
 async function handleCreatePR(request, env, headers) {
-  const authHeader = request.headers.get('Authorization');
+  const authHeader = request.headers.get("Authorization");
   if (!authHeader) {
-    return new Response(JSON.stringify({ error: 'Missing authorization' }), {
+    return new Response(JSON.stringify({ error: "Missing authorization" }), {
       status: 401,
-      headers: { ...headers, 'Content-Type': 'application/json' },
+      headers: { ...headers, "Content-Type": "application/json" },
     });
   }
 
-  const token = authHeader.replace('Bearer ', '');
+  const token = authHeader.replace("Bearer ", "");
   const { owner, branch, title, body } = await request.json();
 
   try {
@@ -428,18 +446,18 @@ async function handleCreatePR(request, env, headers) {
     const prResponse = await fetch(
       `https://api.github.com/repos/${env.GITHUB_REPO_OWNER}/${env.GITHUB_REPO_NAME}/pulls`,
       {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/vnd.github.v3+json',
-          'Content-Type': 'application/json',
-          'User-Agent': 'QPR-Contribution-Portal',
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github.v3+json",
+          "Content-Type": "application/json",
+          "User-Agent": "QPR-Contribution-Portal",
         },
         body: JSON.stringify({
           title: title,
           body: body,
           head: `${owner}:${branch}`,
-          base: 'main',
+          base: "main",
         }),
       }
     );
@@ -447,16 +465,16 @@ async function handleCreatePR(request, env, headers) {
     const prData = await prResponse.json();
 
     if (prResponse.status !== 201) {
-      throw new Error(prData.message || 'Failed to create pull request');
+      throw new Error(prData.message || "Failed to create pull request");
     }
 
     return new Response(JSON.stringify(prData), {
-      headers: { ...headers, 'Content-Type': 'application/json' },
+      headers: { ...headers, "Content-Type": "application/json" },
     });
   } catch (error) {
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
-      headers: { ...headers, 'Content-Type': 'application/json' },
+      headers: { ...headers, "Content-Type": "application/json" },
     });
   }
 }
@@ -467,71 +485,94 @@ async function handleCreatePR(request, env, headers) {
  * Supports batching for large uploads
  */
 async function handleDirectContribution(request, env, headers) {
-  if (request.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+  if (request.method !== "POST") {
+    return new Response(JSON.stringify({ error: "Method not allowed" }), {
       status: 405,
-      headers: { ...headers, 'Content-Type': 'application/json' },
+      headers: { ...headers, "Content-Type": "application/json" },
     });
   }
 
   try {
     const data = await request.json();
-    const { 
-      userEmail, 
-      userName, 
-      uploadGroups, 
+    const {
+      userEmail,
+      userName,
+      uploadGroups,
       uploadGroupsForPR, // Complete list of all files for PR description (only on last batch)
-      prTitle, 
+      prTitle,
       prDescription,
       branchName: existingBranch, // Optional: if continuing from previous batch
       shouldCreatePR = true, // Whether to create PR at the end
-      batchInfo // Optional: { current: 1, total: 3 }
+      batchInfo, // Optional: { current: 1, total: 3 }
     } = data;
 
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('📥 Direct contribution request received');
-    console.log('  User:', userName, `(${userEmail})`);
-    console.log('  Existing branch:', existingBranch || 'NONE (will create new)');
-    console.log('  Should create PR:', shouldCreatePR);
-    console.log('  Upload groups (this batch):', uploadGroups.length);
-    console.log('  Files in this batch:', uploadGroups.reduce((sum, g) => sum + g.files.length, 0));
+    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    console.log("📥 Direct contribution request received");
+    console.log("  User:", userName, `(${userEmail})`);
+    console.log(
+      "  Existing branch:",
+      existingBranch || "NONE (will create new)"
+    );
+    console.log("  Should create PR:", shouldCreatePR);
+    console.log("  Upload groups (this batch):", uploadGroups.length);
+    console.log(
+      "  Files in this batch:",
+      uploadGroups.reduce((sum, g) => sum + g.files.length, 0)
+    );
     if (uploadGroupsForPR) {
-      console.log('  Complete file list for PR:', uploadGroupsForPR.reduce((sum, g) => sum + g.files.length, 0), 'files');
+      console.log(
+        "  Complete file list for PR:",
+        uploadGroupsForPR.reduce((sum, g) => sum + g.files.length, 0),
+        "files"
+      );
     }
     if (batchInfo) {
-      console.log('  Batch info:', `${batchInfo.current}/${batchInfo.total}`);
+      console.log("  Batch info:", `${batchInfo.current}/${batchInfo.total}`);
     }
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
     // Validate required fields
     if (!userEmail || !userName || !uploadGroups) {
-      return new Response(JSON.stringify({ error: 'Missing required fields' }), {
-        status: 400,
-        headers: { ...headers, 'Content-Type': 'application/json' },
-      });
+      return new Response(
+        JSON.stringify({ error: "Missing required fields" }),
+        {
+          status: 400,
+          headers: { ...headers, "Content-Type": "application/json" },
+        }
+      );
     }
-    
+
     // prTitle only required if creating PR
     if (shouldCreatePR && !prTitle) {
-      return new Response(JSON.stringify({ error: 'PR title required when creating PR' }), {
-        status: 400,
-        headers: { ...headers, 'Content-Type': 'application/json' },
-      });
+      return new Response(
+        JSON.stringify({ error: "PR title required when creating PR" }),
+        {
+          status: 400,
+          headers: { ...headers, "Content-Type": "application/json" },
+        }
+      );
     }
 
     // Validate email domain
-    const allowedDomain = env.ALLOWED_EMAIL_DOMAIN || 'iisermohali.ac.in';
+    const allowedDomain = env.ALLOWED_EMAIL_DOMAIN || "iisermohali.ac.in";
     if (!userEmail.endsWith(`@${allowedDomain}`)) {
-      return new Response(JSON.stringify({ 
-        error: `Only ${allowedDomain} email addresses are allowed` 
-      }), {
-        status: 403,
-        headers: { ...headers, 'Content-Type': 'application/json' },
-      });
+      return new Response(
+        JSON.stringify({
+          error: `Only ${allowedDomain} email addresses are allowed`,
+        }),
+        {
+          status: 403,
+          headers: { ...headers, "Content-Type": "application/json" },
+        }
+      );
     }
 
-    const batchLog = batchInfo ? ` (batch ${batchInfo.current}/${batchInfo.total})` : '';
-    console.log(`📤 Processing contribution from ${userName} (${userEmail})${batchLog}`);
+    const batchLog = batchInfo
+      ? ` (batch ${batchInfo.current}/${batchInfo.total})`
+      : "";
+    console.log(
+      `📤 Processing contribution from ${userName} (${userEmail})${batchLog}`
+    );
 
     // Get GitHub App installation token
     const appToken = await getInstallationToken(
@@ -541,11 +582,11 @@ async function handleDirectContribution(request, env, headers) {
     );
 
     let branchName = existingBranch;
-    
+
     // Create branch only if not provided (first batch)
     if (!branchName) {
       const timestamp = Date.now();
-      const emailPrefix = userEmail.split('@')[0].replace(/[^a-zA-Z0-9]/g, '-');
+      const emailPrefix = userEmail.split("@")[0].replace(/[^a-zA-Z0-9]/g, "-");
       branchName = `contrib-${emailPrefix}-${timestamp}`;
 
       // Get the default branch SHA
@@ -553,15 +594,15 @@ async function handleDirectContribution(request, env, headers) {
         `https://api.github.com/repos/${env.GITHUB_REPO_OWNER}/${env.GITHUB_REPO_NAME}`,
         {
           headers: {
-            'Authorization': `Bearer ${appToken}`,
-            'Accept': 'application/vnd.github.v3+json',
-            'User-Agent': 'QPR-Contribution-Bot',
+            Authorization: `Bearer ${appToken}`,
+            Accept: "application/vnd.github.v3+json",
+            "User-Agent": "QPR-Contribution-Bot",
           },
         }
       );
 
       if (!repoResponse.ok) {
-        throw new Error('Failed to fetch repository information');
+        throw new Error("Failed to fetch repository information");
       }
 
       const repoData = await repoResponse.json();
@@ -572,15 +613,15 @@ async function handleDirectContribution(request, env, headers) {
         `https://api.github.com/repos/${env.GITHUB_REPO_OWNER}/${env.GITHUB_REPO_NAME}/git/ref/heads/${defaultBranch}`,
         {
           headers: {
-            'Authorization': `Bearer ${appToken}`,
-            'Accept': 'application/vnd.github.v3+json',
-            'User-Agent': 'QPR-Contribution-Bot',
+            Authorization: `Bearer ${appToken}`,
+            Accept: "application/vnd.github.v3+json",
+            "User-Agent": "QPR-Contribution-Bot",
           },
         }
       );
 
       if (!refResponse.ok) {
-        throw new Error('Failed to fetch default branch reference');
+        throw new Error("Failed to fetch default branch reference");
       }
 
       const refData = await refResponse.json();
@@ -590,12 +631,12 @@ async function handleDirectContribution(request, env, headers) {
       const createBranchResponse = await fetch(
         `https://api.github.com/repos/${env.GITHUB_REPO_OWNER}/${env.GITHUB_REPO_NAME}/git/refs`,
         {
-          method: 'POST',
+          method: "POST",
           headers: {
-            'Authorization': `Bearer ${appToken}`,
-            'Accept': 'application/vnd.github.v3+json',
-            'Content-Type': 'application/json',
-            'User-Agent': 'QPR-Contribution-Bot',
+            Authorization: `Bearer ${appToken}`,
+            Accept: "application/vnd.github.v3+json",
+            "Content-Type": "application/json",
+            "User-Agent": "QPR-Contribution-Bot",
           },
           body: JSON.stringify({
             ref: `refs/heads/${branchName}`,
@@ -606,7 +647,7 @@ async function handleDirectContribution(request, env, headers) {
 
       if (!createBranchResponse.ok) {
         const errorData = await createBranchResponse.json();
-        throw new Error(errorData.message || 'Failed to create branch');
+        throw new Error(errorData.message || "Failed to create branch");
       }
 
       console.log(`Created branch: ${branchName}`);
@@ -616,22 +657,22 @@ async function handleDirectContribution(request, env, headers) {
     const uploadedFiles = [];
     for (const group of uploadGroups) {
       const { folderPath, files } = group;
-      
+
       for (const file of files) {
         const { name, content } = file; // content should be base64
         const filePath = `${folderPath}/${name}`;
-        
+
         console.log(`Uploading file: ${filePath}`);
-        
+
         const uploadResponse = await fetch(
           `https://api.github.com/repos/${env.GITHUB_REPO_OWNER}/${env.GITHUB_REPO_NAME}/contents/${filePath}`,
           {
-            method: 'PUT',
+            method: "PUT",
             headers: {
-              'Authorization': `Bearer ${appToken}`,
-              'Accept': 'application/vnd.github.v3+json',
-              'Content-Type': 'application/json',
-              'User-Agent': 'QPR-Contribution-Bot',
+              Authorization: `Bearer ${appToken}`,
+              Accept: "application/vnd.github.v3+json",
+              "Content-Type": "application/json",
+              "User-Agent": "QPR-Contribution-Bot",
             },
             body: JSON.stringify({
               message: `Add ${name}`,
@@ -642,8 +683,8 @@ async function handleDirectContribution(request, env, headers) {
                 email: userEmail,
               },
               committer: {
-                name: 'QPR Bot',
-                email: 'bot@iiserm.github.io',
+                name: "QPR Bot",
+                email: "bot@iiserm.github.io",
               },
             }),
           }
@@ -663,18 +704,18 @@ async function handleDirectContribution(request, env, headers) {
     // Create pull request if requested
     let prData = null;
     console.log(`\n🔍 PR Creation check: shouldCreatePR = ${shouldCreatePR}`);
-    
+
     if (shouldCreatePR) {
-      console.log('✅ Creating pull request...');
-      
+      console.log("✅ Creating pull request...");
+
       // Get the default branch for PR
       const repoResponse = await fetch(
         `https://api.github.com/repos/${env.GITHUB_REPO_OWNER}/${env.GITHUB_REPO_NAME}`,
         {
           headers: {
-            'Authorization': `Bearer ${appToken}`,
-            'Accept': 'application/vnd.github.v3+json',
-            'User-Agent': 'QPR-Contribution-Bot',
+            Authorization: `Bearer ${appToken}`,
+            Accept: "application/vnd.github.v3+json",
+            "User-Agent": "QPR-Contribution-Bot",
           },
         }
       );
@@ -683,14 +724,18 @@ async function handleDirectContribution(request, env, headers) {
 
       // Build PR body using complete file list if provided, otherwise use current batch
       const groupsForDescription = uploadGroupsForPR || uploadGroups;
-      console.log(`  Building PR description with ${groupsForDescription.length} group(s)`);
-      
-      const filesList = groupsForDescription.map(group => {
-        const { folderPath, files } = group;
-        return `- **${folderPath}/**:\n${files.map(f => `  - ${f.name}`).join('\n')}`;
-      }).join('\n\n');
+      console.log(
+        `  Building PR description with ${groupsForDescription.length} group(s)`
+      );
 
-      const prBody = `${prDescription ? prDescription + '\n\n' : ''}**Contributed by:** ${userEmail}
+      const filesList = groupsForDescription
+        .map((group) => {
+          const { folderPath, files } = group;
+          return `- **${folderPath}/**:\n${files.map((f) => `  - ${f.name}`).join("\n")}`;
+        })
+        .join("\n\n");
+
+      const prBody = `${prDescription ? prDescription + "\n\n" : ""}**Contributed by:** ${userEmail}
 **Google Account:** ${userName}
 
 ### Files Added:
@@ -698,20 +743,20 @@ ${filesList}
 
 ---
 *This PR was created via the QPR Contribution Portal (Direct submission)*`;
-      
-      console.log('  PR body preview:');
-      console.log('  ' + filesList.split('\n').join('\n  '));
+
+      console.log("  PR body preview:");
+      console.log("  " + filesList.split("\n").join("\n  "));
 
       // Create pull request
       const prResponse = await fetch(
         `https://api.github.com/repos/${env.GITHUB_REPO_OWNER}/${env.GITHUB_REPO_NAME}/pulls`,
         {
-          method: 'POST',
+          method: "POST",
           headers: {
-            'Authorization': `Bearer ${appToken}`,
-            'Accept': 'application/vnd.github.v3+json',
-            'Content-Type': 'application/json',
-            'User-Agent': 'QPR-Contribution-Bot',
+            Authorization: `Bearer ${appToken}`,
+            Accept: "application/vnd.github.v3+json",
+            "Content-Type": "application/json",
+            "User-Agent": "QPR-Contribution-Bot",
           },
           body: JSON.stringify({
             title: prTitle,
@@ -724,7 +769,7 @@ ${filesList}
 
       if (!prResponse.ok) {
         const errorData = await prResponse.json();
-        throw new Error(errorData.message || 'Failed to create pull request');
+        throw new Error(errorData.message || "Failed to create pull request");
       }
 
       prData = await prResponse.json();
@@ -736,30 +781,34 @@ ${filesList}
       console.log(`   Files uploaded to branch: ${branchName}`);
     }
 
-    console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('✅ Request completed successfully');
-    console.log('   Branch:', branchName);
-    console.log('   Files uploaded:', uploadedFiles.length);
-    console.log('   PR created:', prData ? 'YES' : 'NO');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+    console.log("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    console.log("✅ Request completed successfully");
+    console.log("   Branch:", branchName);
+    console.log("   Files uploaded:", uploadedFiles.length);
+    console.log("   PR created:", prData ? "YES" : "NO");
+    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 
-    return new Response(JSON.stringify({
-      success: true,
-      pr: prData,
-      branch: branchName,
-      filesUploaded: uploadedFiles,
-    }), {
-      headers: { ...headers, 'Content-Type': 'application/json' },
-    });
-
+    return new Response(
+      JSON.stringify({
+        success: true,
+        pr: prData,
+        branch: branchName,
+        filesUploaded: uploadedFiles,
+      }),
+      {
+        headers: { ...headers, "Content-Type": "application/json" },
+      }
+    );
   } catch (error) {
-    console.error('Direct contribution error:', error);
-    return new Response(JSON.stringify({ 
-      error: error.message || 'Failed to process direct contribution' 
-    }), {
-      status: 500,
-      headers: { ...headers, 'Content-Type': 'application/json' },
-    });
+    console.error("Direct contribution error:", error);
+    return new Response(
+      JSON.stringify({
+        error: error.message || "Failed to process direct contribution",
+      }),
+      {
+        status: 500,
+        headers: { ...headers, "Content-Type": "application/json" },
+      }
+    );
   }
 }
-

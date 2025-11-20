@@ -182,7 +182,7 @@ async function initiateGoogleLogin() {
       // Sign out immediately
       await auth.signOut();
       showError(
-        `Access restricted to ${allowedDomain} email addresses only.\n\nYour email: ${user.email}\n\nPlease use your IISER Mohali institute email or sign in with GitHub for external contributions.`,
+        `Access restricted to ${allowedDomain} email addresses only.\n\nYour email: ${user.email}\n\nPlease use your IISER Mohali institute email or sign in with GitHub for external contributions.`
       );
       return;
     }
@@ -285,7 +285,7 @@ function addUploadGroup() {
   const groupIndex = state.uploadGroups.length;
 
   console.log(
-    `[addUploadGroup] Creating new group: ${groupId} (index ${groupIndex})`,
+    `[addUploadGroup] Creating new group: ${groupId} (index ${groupIndex})`
   );
 
   const groupHTML = `
@@ -390,7 +390,7 @@ function addUploadGroup() {
   state.uploadGroups.push({ id: groupId, files: [], fileNames: {} });
 
   console.log(
-    `[addUploadGroup] ✅ Group created. Total groups: ${state.uploadGroups.length}`,
+    `[addUploadGroup] ✅ Group created. Total groups: ${state.uploadGroups.length}`
   );
 
   // Setup drag and drop
@@ -425,7 +425,7 @@ function setupDragAndDrop(groupId) {
       () => {
         dropZone.classList.add("drag-over");
       },
-      false,
+      false
     );
   });
 
@@ -435,7 +435,7 @@ function setupDragAndDrop(groupId) {
       () => {
         dropZone.classList.remove("drag-over");
       },
-      false,
+      false
     );
   });
 
@@ -447,7 +447,7 @@ function setupDragAndDrop(groupId) {
       input.files = files;
       handleFileSelect(groupId);
     },
-    false,
+    false
   );
 }
 
@@ -475,7 +475,7 @@ window.handleFileSelect = function (groupId) {
 
   console.log(
     `[handleFileSelect] Existing files in state:`,
-    existingFiles.length,
+    existingFiles.length
   );
   existingFiles.forEach((file, idx) => {
     console.log(`  ${idx + 1}. ${file.name} (${formatFileSize(file.size)})`);
@@ -493,7 +493,7 @@ window.handleFileSelect = function (groupId) {
       errors.push(`${file.name}: File too large (${sizeMB} MB, max 7.5 MB)`);
       oversizedFiles.push({ name: file.name, size: sizeMB });
       console.log(
-        `[handleFileSelect] ❌ Rejected (too large): ${file.name} (${sizeMB} MB)`,
+        `[handleFileSelect] ❌ Rejected (too large): ${file.name} (${sizeMB} MB)`
       );
       return;
     }
@@ -503,7 +503,7 @@ window.handleFileSelect = function (groupId) {
     if (!CONFIG.ALLOWED_EXTENSIONS.includes(extension)) {
       errors.push(`${file.name}: Unsupported file type`);
       console.log(
-        `[handleFileSelect] ❌ Rejected (unsupported type): ${file.name} (.${extension})`,
+        `[handleFileSelect] ❌ Rejected (unsupported type): ${file.name} (.${extension})`
       );
       return;
     }
@@ -551,7 +551,7 @@ window.handleFileSelect = function (groupId) {
       if (!group.fileNames[index]) {
         group.fileNames[index] = file.name;
         console.log(
-          `[handleFileSelect] Set default name for file ${index}: ${file.name}`,
+          `[handleFileSelect] Set default name for file ${index}: ${file.name}`
         );
       }
     });
@@ -564,7 +564,7 @@ window.handleFileSelect = function (groupId) {
 
   console.log(
     `[handleFileSelect] Updated input.files.length:`,
-    input.files.length,
+    input.files.length
   );
 
   // Display all files with editable names
@@ -591,14 +591,14 @@ window.handleFileSelect = function (groupId) {
     .join("");
 
   console.log(
-    `[handleFileSelect] ✅ Finished. Displaying ${allFiles.length} files.`,
+    `[handleFileSelect] ✅ Finished. Displaying ${allFiles.length} files.`
   );
 };
 
 // Remove file
 window.removeFile = function (groupId, index) {
   console.log(
-    `[removeFile] Removing file at index ${index} from group ${groupId}`,
+    `[removeFile] Removing file at index ${index} from group ${groupId}`
   );
 
   const group = state.uploadGroups.find((g) => g.id === groupId);
@@ -761,7 +761,7 @@ window.validateYear = function (groupId) {
 // Update filename
 window.updateFileName = function (groupId, index, newName) {
   console.log(
-    `[updateFileName] Group: ${groupId}, Index: ${index}, New name: ${newName}`,
+    `[updateFileName] Group: ${groupId}, Index: ${index}, New name: ${newName}`
   );
 
   const group = state.uploadGroups.find((g) => g.id === groupId);
@@ -773,19 +773,19 @@ window.updateFileName = function (groupId, index, newName) {
     if (sanitized) {
       group.fileNames[index] = sanitized;
       console.log(
-        `[updateFileName] ✅ Updated: "${originalName}" → "${sanitized}"`,
+        `[updateFileName] ✅ Updated: "${originalName}" → "${sanitized}"`
       );
     } else {
       // Revert to original if empty
       group.fileNames[index] = originalName;
       const input = document.querySelector(
-        `#${groupId}-file-list .file-item:nth-child(${index + 1}) .file-name-input`,
+        `#${groupId}-file-list .file-item:nth-child(${index + 1}) .file-name-input`
       );
       if (input) {
         input.value = originalName;
       }
       console.log(
-        `[updateFileName] ⚠️ Empty name, reverted to: "${originalName}"`,
+        `[updateFileName] ⚠️ Empty name, reverted to: "${originalName}"`
       );
     }
   }
@@ -868,7 +868,7 @@ function createBatches(uploadGroupsData, fileObjects) {
 
   console.log("[createBatches] Starting batching process...");
   console.log(
-    `[createBatches] MAX_BATCH_SIZE: ${(CONFIG.MAX_BATCH_SIZE / (1024 * 1024)).toFixed(2)} MB`,
+    `[createBatches] MAX_BATCH_SIZE: ${(CONFIG.MAX_BATCH_SIZE / (1024 * 1024)).toFixed(2)} MB`
   );
 
   // Flatten all files with their metadata
@@ -882,7 +882,7 @@ function createBatches(uploadGroupsData, fileObjects) {
 
       console.log(`[createBatches] File: ${fileData.name}`);
       console.log(
-        `  Original: ${originalSizeMB} MB → Base64: ${fileSizeMB} MB`,
+        `  Original: ${originalSizeMB} MB → Base64: ${fileSizeMB} MB`
       );
 
       allFiles.push({
@@ -905,15 +905,15 @@ function createBatches(uploadGroupsData, fileObjects) {
     // If single file exceeds batch size, put it in its own batch (but allow it)
     if (item.fileSize > CONFIG.MAX_BATCH_SIZE) {
       console.log(
-        `[createBatches] ⚠️ File ${item.fileData.name} (${itemSizeMB} MB) exceeds batch limit (${maxBatchMB} MB)`,
+        `[createBatches] ⚠️ File ${item.fileData.name} (${itemSizeMB} MB) exceeds batch limit (${maxBatchMB} MB)`
       );
       console.log(
-        `[createBatches]    → Creating dedicated batch for this file`,
+        `[createBatches]    → Creating dedicated batch for this file`
       );
 
       if (currentBatch.length > 0) {
         console.log(
-          `[createBatches]    → Saving current batch with ${currentBatch.length} file(s)`,
+          `[createBatches]    → Saving current batch with ${currentBatch.length} file(s)`
         );
         batches.push(currentBatch);
         currentBatch = [];
@@ -921,7 +921,7 @@ function createBatches(uploadGroupsData, fileObjects) {
       }
       batches.push([item]);
       console.log(
-        `[createBatches]    → Batch #${batches.length} created (1 oversized file)`,
+        `[createBatches]    → Batch #${batches.length} created (1 oversized file)`
       );
       continue;
     }
@@ -932,18 +932,18 @@ function createBatches(uploadGroupsData, fileObjects) {
       currentBatch.length > 0
     ) {
       console.log(
-        `[createBatches] Adding ${item.fileData.name} would exceed limit, creating new batch`,
+        `[createBatches] Adding ${item.fileData.name} would exceed limit, creating new batch`
       );
       batches.push(currentBatch);
       console.log(
-        `[createBatches] Batch #${batches.length} created (${currentBatch.length} file(s))`,
+        `[createBatches] Batch #${batches.length} created (${currentBatch.length} file(s))`
       );
       currentBatch = [];
       currentBatchSize = 0;
     }
 
     console.log(
-      `[createBatches] Adding ${item.fileData.name} to current batch`,
+      `[createBatches] Adding ${item.fileData.name} to current batch`
     );
     currentBatch.push(item);
     currentBatchSize += item.fileSize;
@@ -953,7 +953,7 @@ function createBatches(uploadGroupsData, fileObjects) {
   if (currentBatch.length > 0) {
     batches.push(currentBatch);
     console.log(
-      `[createBatches] Final batch #${batches.length} created (${currentBatch.length} file(s))`,
+      `[createBatches] Final batch #${batches.length} created (${currentBatch.length} file(s))`
     );
   }
 
@@ -964,7 +964,7 @@ function createBatches(uploadGroupsData, fileObjects) {
       (1024 * 1024)
     ).toFixed(2);
     console.log(
-      `  Batch ${idx + 1}: ${batch.length} file(s), ${batchSizeMB} MB`,
+      `  Batch ${idx + 1}: ${batch.length} file(s), ${batchSizeMB} MB`
     );
     batch.forEach((item) => {
       const sizeMB = (item.fileSize / (1024 * 1024)).toFixed(2);
@@ -1029,7 +1029,7 @@ async function handleDirectContribution(prTitle, prDescription) {
 
       updateProgress(
         `Uploading batch ${batchIdx + 1}/${batches.length}...`,
-        10 + Math.floor((batchIdx / batches.length) * 70),
+        10 + Math.floor((batchIdx / batches.length) * 70)
       );
 
       // Convert batch files to base64
@@ -1054,7 +1054,7 @@ async function handleDirectContribution(prTitle, prDescription) {
         ([folderPath, files]) => ({
           folderPath,
           files,
-        }),
+        })
       );
 
       // Track uploaded files for PR description
@@ -1068,7 +1068,7 @@ async function handleDirectContribution(prTitle, prDescription) {
       });
 
       console.log(
-        `[Batch ${batchIdx + 1}] Total files tracked so far: ${allUploadedFiles.length}`,
+        `[Batch ${batchIdx + 1}] Total files tracked so far: ${allUploadedFiles.length}`
       );
 
       // For the last batch, send info about ALL uploaded files for PR description
@@ -1076,7 +1076,7 @@ async function handleDirectContribution(prTitle, prDescription) {
       if (isLastBatch) {
         uploadGroupsForPR = buildCompleteUploadGroupsList(allUploadedFiles);
         console.log(
-          `[Batch ${batchIdx + 1}] 📋 Complete file list for PR description:`,
+          `[Batch ${batchIdx + 1}] 📋 Complete file list for PR description:`
         );
         uploadGroupsForPR.forEach((group) => {
           console.log(`  ${group.folderPath}/`);
@@ -1116,7 +1116,7 @@ async function handleDirectContribution(prTitle, prDescription) {
             "Content-Type": "application/json",
           },
           body: JSON.stringify(requestPayload),
-        },
+        }
       );
 
       if (!response.ok) {
@@ -1142,14 +1142,14 @@ async function handleDirectContribution(prTitle, prDescription) {
 
       totalFilesProcessed += batch.length;
       console.log(
-        `[Batch ${batchIdx + 1}] Progress: ${totalFilesProcessed}/${totalFiles} files uploaded`,
+        `[Batch ${batchIdx + 1}] Progress: ${totalFilesProcessed}/${totalFiles} files uploaded`
       );
 
       // Show PR result on last batch
       if (isLastBatch) {
         if (result.pr) {
           console.log(
-            `[Batch ${batchIdx + 1}] 🎉 PR created: ${result.pr.html_url}`,
+            `[Batch ${batchIdx + 1}] 🎉 PR created: ${result.pr.html_url}`
           );
           updateProgress("Complete!", 100);
 
@@ -1158,7 +1158,7 @@ async function handleDirectContribution(prTitle, prDescription) {
           }, 500);
         } else {
           console.error(
-            `[Batch ${batchIdx + 1}] ⚠️ Last batch but no PR returned!`,
+            `[Batch ${batchIdx + 1}] ⚠️ Last batch but no PR returned!`
           );
         }
       }
@@ -1202,7 +1202,7 @@ async function handleGitHubContribution(prTitle, prDescription) {
     // Step 4: Upload files
     const totalFiles = state.uploadGroups.reduce(
       (sum, g) => sum + g.files.length,
-      0,
+      0
     );
     let uploadedFiles = 0;
 
@@ -1218,14 +1218,14 @@ async function handleGitHubContribution(prTitle, prDescription) {
 
         updateProgress(
           `Uploading ${fileName}...`,
-          30 + Math.floor((uploadedFiles / totalFiles) * 50),
+          30 + Math.floor((uploadedFiles / totalFiles) * 50)
         );
 
         await uploadFile(
           state.userForkName,
           `${folderPath}/${fileName}`,
           file,
-          branchName,
+          branchName
         );
 
         uploadedFiles++;
@@ -1239,7 +1239,7 @@ async function handleGitHubContribution(prTitle, prDescription) {
       .map((group) => {
         const path = getFolderPath(group.id);
         const fileNames = group.files.map(
-          (f, i) => group.fileNames[i] || f.name,
+          (f, i) => group.fileNames[i] || f.name
         );
         return `- **${path}/**:\n${fileNames.map((name) => `  - ${name}`).join("\n")}`;
       })
@@ -1251,7 +1251,7 @@ async function handleGitHubContribution(prTitle, prDescription) {
       state.userForkName,
       branchName,
       prTitle,
-      prBody,
+      prBody
     );
 
     updateProgress("Complete!", 100);
@@ -1303,7 +1303,7 @@ function validateForm() {
     if (group.files.length > 0) {
       const subject = document.getElementById(`${group.id}-subject`).value;
       const courseCode = document.getElementById(
-        `${group.id}-coursecode`,
+        `${group.id}-coursecode`
       ).value;
       const year = document.getElementById(`${group.id}-year`).value;
 

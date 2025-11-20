@@ -32,6 +32,7 @@ npm install -g wrangler
 ```
 
 Verify installation:
+
 ```bash
 wrangler --version
 ```
@@ -47,11 +48,13 @@ This will open your browser and ask you to authorize Wrangler to access your Clo
 ## Step 4: Configure the Worker
 
 1. Navigate to the cloudflare-worker directory:
+
    ```bash
    cd cloudflare-worker
    ```
 
 2. Install dependencies:
+
    ```bash
    npm install
    ```
@@ -80,6 +83,7 @@ wrangler deploy
 ```
 
 After deployment, you'll see output like:
+
 ```
 Published qpr-contribution-worker (X.XX sec)
   https://qpr-contribution-worker.YOUR-SUBDOMAIN.workers.dev
@@ -105,19 +109,21 @@ Update `docs/contribute.js` with your worker URL and Client ID:
 ```javascript
 // Line 6-7
 const CONFIG = {
-    WORKER_URL: 'https://qpr-contribution-worker.YOUR-SUBDOMAIN.workers.dev',
-    GITHUB_CLIENT_ID: 'YOUR_GITHUB_CLIENT_ID',
-    // ... rest of config
+  WORKER_URL: "https://qpr-contribution-worker.YOUR-SUBDOMAIN.workers.dev",
+  GITHUB_CLIENT_ID: "YOUR_GITHUB_CLIENT_ID",
+  // ... rest of config
 };
 ```
 
 **Replace:**
+
 - `YOUR-WORKER-NAME.YOUR-SUBDOMAIN.workers.dev` with your actual worker URL
 - `YOUR_GITHUB_CLIENT_ID` with your GitHub Client ID
 
 ## Step 9: Test the System
 
 1. Commit and push your changes:
+
    ```bash
    git add docs/contribute.js docs/contribute.html docs/index.html docs/styles.css
    git commit -m "Add contribution portal"
@@ -135,12 +141,14 @@ const CONFIG = {
 ### CORS Errors
 
 If you see CORS errors in the browser console:
+
 1. Check that `FRONTEND_URL` in `wrangler.toml` matches your GitHub Pages URL
 2. Redeploy the worker: `wrangler deploy`
 
 ### OAuth Fails
 
 If OAuth redirect fails:
+
 1. Verify the callback URL in your GitHub OAuth app matches your worker URL exactly
 2. Check that secrets are set correctly:
    ```bash
@@ -150,6 +158,7 @@ If OAuth redirect fails:
 ### Worker Errors
 
 View worker logs:
+
 ```bash
 wrangler tail
 ```
@@ -159,6 +168,7 @@ Then try your contribution again to see real-time logs.
 ### Rate Limits
 
 GitHub API has rate limits:
+
 - Authenticated: 5,000 requests/hour
 - For most users, this is more than enough
 
@@ -167,26 +177,31 @@ If you hit rate limits, wait an hour or implement caching.
 ## Managing the Worker
 
 ### View logs in real-time:
+
 ```bash
 wrangler tail
 ```
 
 ### Update the worker:
+
 ```bash
 wrangler deploy
 ```
 
 ### Delete the worker:
+
 ```bash
 wrangler delete
 ```
 
 ### View secrets:
+
 ```bash
 wrangler secret list
 ```
 
 ### Update a secret:
+
 ```bash
 wrangler secret put SECRET_NAME
 ```
@@ -194,6 +209,7 @@ wrangler secret put SECRET_NAME
 ## Free Tier Limits
 
 Cloudflare Workers Free Tier:
+
 - ✅ 100,000 requests per day
 - ✅ 10 MB request body size (hence the 10MB file limit)
 - ✅ 128 MB memory per worker
@@ -211,6 +227,7 @@ This is more than sufficient for a contribution system!
 ## Support
 
 If you encounter issues:
+
 1. Check the [Cloudflare Workers documentation](https://developers.cloudflare.com/workers/)
 2. Open an issue in the GitHub repository
 3. Check browser console for detailed error messages
@@ -226,6 +243,7 @@ wrangler dev
 This starts a local server at `http://localhost:8787`
 
 Update `contribute.js` temporarily to use this local URL for testing:
+
 ```javascript
 WORKER_URL: 'http://localhost:8787',
 ```
@@ -280,4 +298,3 @@ After successful setup:
 4. ✅ Review PRs as they come in!
 
 Happy contributing! 🎉
-

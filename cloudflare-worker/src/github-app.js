@@ -11,28 +11,28 @@
  */
 async function generateJWT(appId, privateKey) {
   const now = Math.floor(Date.now() / 1000);
-  
+
   // JWT Header
   const header = {
-    alg: 'RS256',
-    typ: 'JWT',
+    alg: "RS256",
+    typ: "JWT",
   };
-  
+
   // JWT Payload
   const payload = {
     iat: now - 60, // Issued at time (60 seconds in the past to account for clock drift)
-    exp: now + (10 * 60), // Expires in 10 minutes
+    exp: now + 10 * 60, // Expires in 10 minutes
     iss: appId,
   };
-  
+
   // Encode header and payload
   const encodedHeader = base64UrlEncode(JSON.stringify(header));
   const encodedPayload = base64UrlEncode(JSON.stringify(payload));
-  
+
   // Create signature
   const signatureInput = `${encodedHeader}.${encodedPayload}`;
   const signature = await signRS256(signatureInput, privateKey);
-  
+
   return `${signatureInput}.${signature}`;
 }
 
@@ -45,34 +45,34 @@ async function generateJWT(appId, privateKey) {
 async function signRS256(data, privateKey) {
   // Import the private key
   const pemContents = privateKey
-    .replace(/-----BEGIN RSA PRIVATE KEY-----/, '')
-    .replace(/-----END RSA PRIVATE KEY-----/, '')
-    .replace(/-----BEGIN PRIVATE KEY-----/, '')
-    .replace(/-----END PRIVATE KEY-----/, '')
-    .replace(/\s/g, '');
-  
+    .replace(/-----BEGIN RSA PRIVATE KEY-----/, "")
+    .replace(/-----END RSA PRIVATE KEY-----/, "")
+    .replace(/-----BEGIN PRIVATE KEY-----/, "")
+    .replace(/-----END PRIVATE KEY-----/, "")
+    .replace(/\s/g, "");
+
   const binaryKey = base64Decode(pemContents);
-  
+
   const cryptoKey = await crypto.subtle.importKey(
-    'pkcs8',
+    "pkcs8",
     binaryKey,
     {
-      name: 'RSASSA-PKCS1-v1_5',
-      hash: 'SHA-256',
+      name: "RSASSA-PKCS1-v1_5",
+      hash: "SHA-256",
     },
     false,
-    ['sign']
+    ["sign"]
   );
-  
+
   // Sign the data
   const encoder = new TextEncoder();
   const dataBuffer = encoder.encode(data);
   const signatureBuffer = await crypto.subtle.sign(
-    'RSASSA-PKCS1-v1_5',
+    "RSASSA-PKCS1-v1_5",
     cryptoKey,
     dataBuffer
   );
-  
+
   return base64UrlEncode(signatureBuffer);
 }
 
@@ -86,25 +86,25 @@ async function signRS256(data, privateKey) {
 async function getInstallationToken(appId, privateKey, installationId) {
   // Generate JWT
   const jwt = await generateJWT(appId, privateKey);
-  
+
   // Exchange JWT for installation token
   const response = await fetch(
     `https://api.github.com/app/installations/${installationId}/access_tokens`,
     {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Authorization': `Bearer ${jwt}`,
-        'Accept': 'application/vnd.github.v3+json',
-        'User-Agent': 'QPR-Contribution-Bot',
+        Authorization: `Bearer ${jwt}`,
+        Accept: "application/vnd.github.v3+json",
+        "User-Agent": "QPR-Contribution-Bot",
       },
     }
   );
-  
+
   if (!response.ok) {
     const error = await response.text();
     throw new Error(`Failed to get installation token: ${error}`);
   }
-  
+
   const data = await response.json();
   return data.token;
 }
@@ -116,24 +116,21 @@ async function getInstallationToken(appId, privateKey, installationId) {
  */
 function base64UrlEncode(data) {
   let base64;
-  
-  if (typeof data === 'string') {
+
+  if (typeof data === "string") {
     base64 = btoa(data);
   } else {
     // ArrayBuffer
     const bytes = new Uint8Array(data);
-    let binary = '';
+    let binary = "";
     for (let i = 0; i < bytes.length; i++) {
       binary += String.fromCharCode(bytes[i]);
     }
     base64 = btoa(binary);
   }
-  
+
   // Convert to URL-safe base64
-  return base64
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=/g, '');
+  return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 }
 
 /**
@@ -151,4 +148,3 @@ function base64Decode(base64) {
 }
 
 export { getInstallationToken };
-

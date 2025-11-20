@@ -15,6 +15,7 @@ This directory contains the GitHub Pages website for the IISER Mohali Question P
 The website is automatically built and deployed on every push to the main branch using GitHub Actions (`.github/workflows/deploy-pages.yml`).
 
 The workflow:
+
 1. Checks out the repository
 2. Runs `generate-tree.js` to create the latest folder structure
 3. Deploys the `docs/` directory to GitHub Pages

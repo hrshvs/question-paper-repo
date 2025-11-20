@@ -1,3 +1,12 @@
+# Nothing Outside of Project Folders
+*
+
+!docs/
+!docs/**
+
+!cloudflare-worker/
+!cloudflare-worker/**
+
 # Dependencies
 node_modules
 package-lock.json

@@ -212,7 +212,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Filter out hidden folders from root
     if (!currentFolder) {
       itemsToRender = itemsToRender.filter(
-        (item) => !item.name.startsWith("."),
+        (item) => !item.name.startsWith(".")
       );
     }
 
@@ -493,7 +493,7 @@ function createFileElement(file) {
   const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   icon.setAttribute(
     "class",
-    isPdf ? "item-icon file-icon" : "item-icon file-icon file-icon-other",
+    isPdf ? "item-icon file-icon" : "item-icon file-icon file-icon-other"
   );
   icon.setAttribute("viewBox", "0 0 16 16");
   icon.setAttribute("fill", "currentColor");
@@ -540,7 +540,7 @@ function createFileSearchElement(file) {
   const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   icon.setAttribute(
     "class",
-    isPdf ? "item-icon file-icon" : "item-icon file-icon file-icon-other",
+    isPdf ? "item-icon file-icon" : "item-icon file-icon file-icon-other"
   );
   icon.setAttribute("viewBox", "0 0 16 16");
   icon.setAttribute("fill", "currentColor");
