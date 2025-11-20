@@ -37,3 +37,5 @@ out/
 *.tmp
 *.temp
 .cache/
+.mnemosyne.json
+.mnemosyne.ignore

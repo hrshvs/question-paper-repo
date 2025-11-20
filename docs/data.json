@@ -1,5 +1,5 @@
 {
-  "generated": "2025-11-17T21:29:40.741Z",
+  "generated": "2025-11-20T08:14:11.094Z",
   "folders": [
     {
       "name": ".github",
@@ -4494,6 +4494,26 @@
                       "isFile": true
                     }
                   ]
+                },
+                {
+                  "name": "Endsem_Suppli.jpg",
+                  "path": "Physics/302/MS22/Endsem_Suppli.jpg",
+                  "isFile": true
+                },
+                {
+                  "name": "Endsem.jpg",
+                  "path": "Physics/302/MS22/Endsem.jpg",
+                  "isFile": true
+                },
+                {
+                  "name": "MS1.jpg",
+                  "path": "Physics/302/MS22/MS1.jpg",
+                  "isFile": true
+                },
+                {
+                  "name": "MS2.jpg",
+                  "path": "Physics/302/MS22/MS2.jpg",
+                  "isFile": true
                 }
               ]
             },
@@ -4590,6 +4610,84 @@
           "name": "303",
           "path": "Physics/303",
           "children": [
+            {
+              "name": "2023-24",
+              "path": "Physics/303/2023-24",
+              "children": [
+                {
+                  "name": "2023-24",
+                  "path": "Physics/303/2023-24/2023-24",
+                  "children": [
+                    {
+                      "name": "Assignment01.pdf",
+                      "path": "Physics/303/2023-24/2023-24/Assignment01.pdf",
+                      "isFile": true
+                    },
+                    {
+                      "name": "Assignment02.pdf",
+                      "path": "Physics/303/2023-24/2023-24/Assignment02.pdf",
+                      "isFile": true
+                    },
+                    {
+                      "name": "Assignment03.pdf",
+                      "path": "Physics/303/2023-24/2023-24/Assignment03.pdf",
+                      "isFile": true
+                    },
+                    {
+                      "name": "Assignment04.pdf",
+                      "path": "Physics/303/2023-24/2023-24/Assignment04.pdf",
+                      "isFile": true
+                    },
+                    {
+                      "name": "Assignment05.pdf",
+                      "path": "Physics/303/2023-24/2023-24/Assignment05.pdf",
+                      "isFile": true
+                    },
+                    {
+                      "name": "Assignment06.pdf",
+                      "path": "Physics/303/2023-24/2023-24/Assignment06.pdf",
+                      "isFile": true
+                    },
+                    {
+                      "name": "Assignment07.pdf",
+                      "path": "Physics/303/2023-24/2023-24/Assignment07.pdf",
+                      "isFile": true
+                    },
+                    {
+                      "name": "Assignment08.pdf",
+                      "path": "Physics/303/2023-24/2023-24/Assignment08.pdf",
+                      "isFile": true
+                    },
+                    {
+                      "name": "EndSemSols.pdf",
+                      "path": "Physics/303/2023-24/2023-24/EndSemSols.pdf",
+                      "isFile": true
+                    },
+                    {
+                      "name": "MidSem1Sols.pdf",
+                      "path": "Physics/303/2023-24/2023-24/MidSem1Sols.pdf",
+                      "isFile": true
+                    },
+                    {
+                      "name": "MidSem2Sols.pdf",
+                      "path": "Physics/303/2023-24/2023-24/MidSem2Sols.pdf",
+                      "isFile": true
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "2025",
+              "path": "Physics/303/2025",
+              "children": [
+                {
+                  "name": "PHY303 2025 MS1.jpg",
+                  "path": "Physics/303/2025/PHY303 2025 MS1.jpg",
+                  "isFile": true
+                }
+              ]
+            },
             {
               "name": "Exams MS21",
               "path": "Physics/303/Exams MS21",
