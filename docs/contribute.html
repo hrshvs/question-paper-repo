@@ -74,9 +74,31 @@
             <h2>Contribute to QPR</h2>
             <p>Help grow the repository by uploading question papers, assignments, and study materials. Your contributions help future students!</p>
         </div>
+        
+        <!-- Inline script to prevent flash of auth dialog -->
+        <script>
+            (function() {
+                const authType = localStorage.getItem('auth_type');
+                const authSection = document.getElementById('auth-section');
+                const userSection = document.getElementById('user-section');
+                const uploadSection = document.getElementById('upload-section');
+                
+                if (authType === 'google' || authType === 'github') {
+                    // User is authenticated, show user/upload sections
+                    if (authSection) authSection.style.display = 'none';
+                    if (userSection) userSection.style.display = 'block';
+                    if (uploadSection) uploadSection.style.display = 'block';
+                } else {
+                    // User is not authenticated, show auth section
+                    if (authSection) authSection.style.display = 'block';
+                    if (userSection) userSection.style.display = 'none';
+                    if (uploadSection) uploadSection.style.display = 'none';
+                }
+            })();
+        </script>
 
         <!-- Authentication Section -->
-        <div id="auth-section" class="contribute-section">
+        <div id="auth-section" class="contribute-section" style="display: none;">
             <div class="auth-box">
                 <!-- Google Sign In (Primary for IISER Students) -->
                 <svg class="auth-icon" width="48" height="48" viewBox="0 0 24 24" fill="currentColor">
@@ -121,6 +143,24 @@
         <!-- Upload Form (hidden initially) -->
         <div id="upload-section" class="contribute-section" style="display: none;">
             <form id="contribution-form">
+                <!-- File Size Notice -->
+                <div class="info-notice">
+                    <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor" style="flex-shrink: 0;">
+                        <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                        <path d="M8 4a.905.905 0 0 0-.9.995l.35 3.507a.552.552 0 0 0 1.1 0l.35-3.507A.905.905 0 0 0 8 4zm.002 6a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"/>
+                    </svg>
+                    <div>
+                        <strong>File Size Limit: 7.5 MB per file</strong>
+                        <p style="margin-top: 0.5rem; margin-bottom: 0;">
+                            Due to Cloudflare limits, individual files must be ≤ 7.5 MB. You can upload multiple files in one go—they'll be batched automatically!
+                            <br><br>
+                            <strong>Have larger files?</strong> 
+                            <a href="https://github.com/IISERM/question-paper-repo/pulls" target="_blank" rel="noopener" class="notice-link">Create a Pull Request directly on GitHub</a> 
+                            or split your file into smaller parts.
+                        </p>
+                    </div>
+                </div>
+                
                 <div class="form-section">
                     <h3>Upload Files</h3>
                     <p class="form-description">Add your question papers, assignments, or study materials. You can upload files to multiple folders in one contribution.</p>
@@ -207,17 +247,18 @@
             <ul>
                 <li><strong>Authentication:</strong> Sign in with your IISER Mohali email (@iisermohali.ac.in)</li>
                 <li><strong>File formats:</strong> PDF (preferred), JPG, PNG, DOCX, PPTX, XLSX, ZIP</li>
-                <li><strong>File size:</strong> Maximum 10 MB per file (free tier limit)</li>
-                <li><strong>Organization:</strong> Use folder structure: <code>Subject/CourseCode/Year/filename.pdf</code></li>
+                <li><strong>File size:</strong> Maximum 7.5 MB per file (Cloudflare limit). Upload multiple files in one go - they'll be batched automatically!</li>
+                <li><strong>Organization:</strong> Select subject from dropdown, enter 3-digit course code and 4-digit year</li>
+                <li><strong>File naming:</strong> You can edit filenames after selecting them by clicking on the filename</li>
                 <li><strong>Quality:</strong> Ensure files are clear, readable, and properly named</li>
                 <li><strong>Privacy:</strong> Remove personal information (names, roll numbers) before uploading</li>
             </ul>
             
-            <h4 style="margin-top: 1.5rem;">Examples of Good Folder Paths:</h4>
+            <h4 style="margin-top: 1.5rem;">Path Structure Examples:</h4>
             <ul>
-                <li><code>Physics/403/2025</code></li>
-                <li><code>Math/201/2024</code></li>
-                <li><code>Chemistry/102/2023</code></li>
+                <li>Subject: <strong>Physics</strong> → Course Code: <strong>403</strong> → Year: <strong>2025</strong> = <code>Physics/403/2025</code></li>
+                <li>Subject: <strong>Math</strong> → Course Code: <strong>201</strong> → Year: <strong>2024</strong> = <code>Math/201/2024</code></li>
+                <li>Subject: <strong>Chemistry</strong> → Course Code: <strong>102</strong> → Year: <strong>2023</strong> → Additional Folder: <strong>Endsem</strong> = <code>Chemistry/102/2023/Endsem</code></li>
             </ul>
         </div>
     </main>

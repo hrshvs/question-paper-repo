@@ -464,6 +464,7 @@ async function handleCreatePR(request, env, headers) {
 /**
  * Handle direct contribution (Firebase Google Auth flow)
  * Creates PR directly on main repo using GitHub App token
+ * Supports batching for large uploads
  */
 async function handleDirectContribution(request, env, headers) {
   if (request.method !== 'POST') {
@@ -475,11 +476,44 @@ async function handleDirectContribution(request, env, headers) {
 
   try {
     const data = await request.json();
-    const { userEmail, userName, uploadGroups, prTitle, prDescription } = data;
+    const { 
+      userEmail, 
+      userName, 
+      uploadGroups, 
+      uploadGroupsForPR, // Complete list of all files for PR description (only on last batch)
+      prTitle, 
+      prDescription,
+      branchName: existingBranch, // Optional: if continuing from previous batch
+      shouldCreatePR = true, // Whether to create PR at the end
+      batchInfo // Optional: { current: 1, total: 3 }
+    } = data;
+
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('📥 Direct contribution request received');
+    console.log('  User:', userName, `(${userEmail})`);
+    console.log('  Existing branch:', existingBranch || 'NONE (will create new)');
+    console.log('  Should create PR:', shouldCreatePR);
+    console.log('  Upload groups (this batch):', uploadGroups.length);
+    console.log('  Files in this batch:', uploadGroups.reduce((sum, g) => sum + g.files.length, 0));
+    if (uploadGroupsForPR) {
+      console.log('  Complete file list for PR:', uploadGroupsForPR.reduce((sum, g) => sum + g.files.length, 0), 'files');
+    }
+    if (batchInfo) {
+      console.log('  Batch info:', `${batchInfo.current}/${batchInfo.total}`);
+    }
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
     // Validate required fields
-    if (!userEmail || !userName || !uploadGroups || !prTitle) {
+    if (!userEmail || !userName || !uploadGroups) {
       return new Response(JSON.stringify({ error: 'Missing required fields' }), {
+        status: 400,
+        headers: { ...headers, 'Content-Type': 'application/json' },
+      });
+    }
+    
+    // prTitle only required if creating PR
+    if (shouldCreatePR && !prTitle) {
+      return new Response(JSON.stringify({ error: 'PR title required when creating PR' }), {
         status: 400,
         headers: { ...headers, 'Content-Type': 'application/json' },
       });
@@ -496,7 +530,8 @@ async function handleDirectContribution(request, env, headers) {
       });
     }
 
-    console.log(`Direct contribution from ${userName} (${userEmail})`);
+    const batchLog = batchInfo ? ` (batch ${batchInfo.current}/${batchInfo.total})` : '';
+    console.log(`📤 Processing contribution from ${userName} (${userEmail})${batchLog}`);
 
     // Get GitHub App installation token
     const appToken = await getInstallationToken(
@@ -505,73 +540,77 @@ async function handleDirectContribution(request, env, headers) {
       env.GITHUB_APP_INSTALLATION_ID
     );
 
-    // Create a unique branch name
-    const timestamp = Date.now();
-    const emailPrefix = userEmail.split('@')[0].replace(/[^a-zA-Z0-9]/g, '-');
-    const branchName = `contrib-${emailPrefix}-${timestamp}`;
+    let branchName = existingBranch;
+    
+    // Create branch only if not provided (first batch)
+    if (!branchName) {
+      const timestamp = Date.now();
+      const emailPrefix = userEmail.split('@')[0].replace(/[^a-zA-Z0-9]/g, '-');
+      branchName = `contrib-${emailPrefix}-${timestamp}`;
 
-    // Get the default branch SHA
-    const repoResponse = await fetch(
-      `https://api.github.com/repos/${env.GITHUB_REPO_OWNER}/${env.GITHUB_REPO_NAME}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${appToken}`,
-          'Accept': 'application/vnd.github.v3+json',
-          'User-Agent': 'QPR-Contribution-Bot',
-        },
+      // Get the default branch SHA
+      const repoResponse = await fetch(
+        `https://api.github.com/repos/${env.GITHUB_REPO_OWNER}/${env.GITHUB_REPO_NAME}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${appToken}`,
+            'Accept': 'application/vnd.github.v3+json',
+            'User-Agent': 'QPR-Contribution-Bot',
+          },
+        }
+      );
+
+      if (!repoResponse.ok) {
+        throw new Error('Failed to fetch repository information');
       }
-    );
 
-    if (!repoResponse.ok) {
-      throw new Error('Failed to fetch repository information');
-    }
+      const repoData = await repoResponse.json();
+      const defaultBranch = repoData.default_branch;
 
-    const repoData = await repoResponse.json();
-    const defaultBranch = repoData.default_branch;
+      // Get the SHA of the default branch
+      const refResponse = await fetch(
+        `https://api.github.com/repos/${env.GITHUB_REPO_OWNER}/${env.GITHUB_REPO_NAME}/git/ref/heads/${defaultBranch}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${appToken}`,
+            'Accept': 'application/vnd.github.v3+json',
+            'User-Agent': 'QPR-Contribution-Bot',
+          },
+        }
+      );
 
-    // Get the SHA of the default branch
-    const refResponse = await fetch(
-      `https://api.github.com/repos/${env.GITHUB_REPO_OWNER}/${env.GITHUB_REPO_NAME}/git/ref/heads/${defaultBranch}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${appToken}`,
-          'Accept': 'application/vnd.github.v3+json',
-          'User-Agent': 'QPR-Contribution-Bot',
-        },
+      if (!refResponse.ok) {
+        throw new Error('Failed to fetch default branch reference');
       }
-    );
 
-    if (!refResponse.ok) {
-      throw new Error('Failed to fetch default branch reference');
-    }
+      const refData = await refResponse.json();
+      const baseSha = refData.object.sha;
 
-    const refData = await refResponse.json();
-    const baseSha = refData.object.sha;
+      // Create new branch
+      const createBranchResponse = await fetch(
+        `https://api.github.com/repos/${env.GITHUB_REPO_OWNER}/${env.GITHUB_REPO_NAME}/git/refs`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${appToken}`,
+            'Accept': 'application/vnd.github.v3+json',
+            'Content-Type': 'application/json',
+            'User-Agent': 'QPR-Contribution-Bot',
+          },
+          body: JSON.stringify({
+            ref: `refs/heads/${branchName}`,
+            sha: baseSha,
+          }),
+        }
+      );
 
-    // Create new branch
-    const createBranchResponse = await fetch(
-      `https://api.github.com/repos/${env.GITHUB_REPO_OWNER}/${env.GITHUB_REPO_NAME}/git/refs`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${appToken}`,
-          'Accept': 'application/vnd.github.v3+json',
-          'Content-Type': 'application/json',
-          'User-Agent': 'QPR-Contribution-Bot',
-        },
-        body: JSON.stringify({
-          ref: `refs/heads/${branchName}`,
-          sha: baseSha,
-        }),
+      if (!createBranchResponse.ok) {
+        const errorData = await createBranchResponse.json();
+        throw new Error(errorData.message || 'Failed to create branch');
       }
-    );
 
-    if (!createBranchResponse.ok) {
-      const errorData = await createBranchResponse.json();
-      throw new Error(errorData.message || 'Failed to create branch');
+      console.log(`Created branch: ${branchName}`);
     }
-
-    console.log(`Created branch: ${branchName}`);
 
     // Upload files with custom author
     const uploadedFiles = [];
@@ -621,13 +660,37 @@ async function handleDirectContribution(request, env, headers) {
       }
     }
 
-    // Build PR body
-    const filesList = uploadGroups.map(group => {
-      const { folderPath, files } = group;
-      return `- **${folderPath}/**:\n${files.map(f => `  - ${f.name}`).join('\n')}`;
-    }).join('\n\n');
+    // Create pull request if requested
+    let prData = null;
+    console.log(`\n🔍 PR Creation check: shouldCreatePR = ${shouldCreatePR}`);
+    
+    if (shouldCreatePR) {
+      console.log('✅ Creating pull request...');
+      
+      // Get the default branch for PR
+      const repoResponse = await fetch(
+        `https://api.github.com/repos/${env.GITHUB_REPO_OWNER}/${env.GITHUB_REPO_NAME}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${appToken}`,
+            'Accept': 'application/vnd.github.v3+json',
+            'User-Agent': 'QPR-Contribution-Bot',
+          },
+        }
+      );
+      const repoData = await repoResponse.json();
+      const defaultBranch = repoData.default_branch;
 
-    const prBody = `${prDescription ? prDescription + '\n\n' : ''}**Contributed by:** ${userEmail}
+      // Build PR body using complete file list if provided, otherwise use current batch
+      const groupsForDescription = uploadGroupsForPR || uploadGroups;
+      console.log(`  Building PR description with ${groupsForDescription.length} group(s)`);
+      
+      const filesList = groupsForDescription.map(group => {
+        const { folderPath, files } = group;
+        return `- **${folderPath}/**:\n${files.map(f => `  - ${f.name}`).join('\n')}`;
+      }).join('\n\n');
+
+      const prBody = `${prDescription ? prDescription + '\n\n' : ''}**Contributed by:** ${userEmail}
 **Google Account:** ${userName}
 
 ### Files Added:
@@ -635,34 +698,50 @@ ${filesList}
 
 ---
 *This PR was created via the QPR Contribution Portal (Direct submission)*`;
+      
+      console.log('  PR body preview:');
+      console.log('  ' + filesList.split('\n').join('\n  '));
 
-    // Create pull request
-    const prResponse = await fetch(
-      `https://api.github.com/repos/${env.GITHUB_REPO_OWNER}/${env.GITHUB_REPO_NAME}/pulls`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${appToken}`,
-          'Accept': 'application/vnd.github.v3+json',
-          'Content-Type': 'application/json',
-          'User-Agent': 'QPR-Contribution-Bot',
-        },
-        body: JSON.stringify({
-          title: prTitle,
-          body: prBody,
-          head: branchName,
-          base: defaultBranch,
-        }),
+      // Create pull request
+      const prResponse = await fetch(
+        `https://api.github.com/repos/${env.GITHUB_REPO_OWNER}/${env.GITHUB_REPO_NAME}/pulls`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${appToken}`,
+            'Accept': 'application/vnd.github.v3+json',
+            'Content-Type': 'application/json',
+            'User-Agent': 'QPR-Contribution-Bot',
+          },
+          body: JSON.stringify({
+            title: prTitle,
+            body: prBody,
+            head: branchName,
+            base: defaultBranch,
+          }),
+        }
+      );
+
+      if (!prResponse.ok) {
+        const errorData = await prResponse.json();
+        throw new Error(errorData.message || 'Failed to create pull request');
       }
-    );
 
-    if (!prResponse.ok) {
-      const errorData = await prResponse.json();
-      throw new Error(errorData.message || 'Failed to create pull request');
+      prData = await prResponse.json();
+      console.log(`✅ PR created successfully!`);
+      console.log(`   PR #${prData.number}: ${prData.html_url}`);
+      console.log(`   Branch: ${branchName}`);
+    } else {
+      console.log(`⏭️  PR creation skipped (shouldCreatePR = false)`);
+      console.log(`   Files uploaded to branch: ${branchName}`);
     }
 
-    const prData = await prResponse.json();
-    console.log(`Created PR #${prData.number}: ${prData.html_url}`);
+    console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('✅ Request completed successfully');
+    console.log('   Branch:', branchName);
+    console.log('   Files uploaded:', uploadedFiles.length);
+    console.log('   PR created:', prData ? 'YES' : 'NO');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
     return new Response(JSON.stringify({
       success: true,
