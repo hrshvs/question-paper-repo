@@ -1,8 +1,3 @@
-// CONFIGURATION
-const CACHE_KEY = "qpr_data";
-const CACHE_TS_KEY = "qpr_timestamp";
-const CACHE_DURATION = 3 * 24 * 60 * 60 * 1000; // 3 days
-
 // THEME MANAGEMENT
 function initThemeToggle() {
   const themeToggle = document.getElementById("theme-toggle");
@@ -146,28 +141,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // --- DATA HELPER ---
   async function getRepositoryData() {
-    const now = Date.now();
-    const cachedData = localStorage.getItem(CACHE_KEY);
-    const cachedTs = localStorage.getItem(CACHE_TS_KEY);
-
-    // Check Cache validity
-    if (cachedData && cachedTs && now - parseInt(cachedTs) < CACHE_DURATION) {
-      console.log("[Cache] Using cached data");
-      return JSON.parse(cachedData);
-    }
-
-    console.log("[Network] Fetching fresh data");
+    console.log("[Network] Fetching repository data");
     const response = await fetch("data.json");
-    if (!response.ok) throw new Error("Network response was not ok");
-    const data = await response.json();
-
-    try {
-      localStorage.setItem(CACHE_KEY, JSON.stringify(data));
-      localStorage.setItem(CACHE_TS_KEY, now.toString());
-    } catch (e) {
-      console.warn("Quota exceeded, could not cache data");
+    if (!response.ok) {
+      throw new Error(`Failed to load data: ${response.status}`);
     }
-    return data;
+    return await response.json();
   }
 
   // --- VIEW RENDERER ---

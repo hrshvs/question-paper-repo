@@ -1193,6 +1193,37 @@ code {
   flex-wrap: wrap;
 }
 
+/* Next Steps Box */
+.next-steps-box {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  padding: 1.25rem;
+  margin: 1.5rem 0;
+  text-align: left;
+}
+
+.next-steps-box h4 {
+  margin: 0 0 0.75rem 0;
+  color: var(--text-primary);
+  font-size: 1rem;
+}
+
+.next-steps-box ul {
+  margin: 0 0 0 1.25rem;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.next-steps-box li {
+  margin-bottom: 0.5rem;
+}
+
+.next-steps-box li:last-child {
+  margin-bottom: 0;
+}
+
 /* Error Box */
 .error-box {
   background: var(--surface);
@@ -1543,52 +1574,52 @@ code {
 
 /* Preview Modal */
 .preview-content {
-    width: 90%;
-    height: 90%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background: var(--bg-secondary);
-    border-radius: 8px;
-    overflow: hidden;
-    position: relative;
+  width: 90%;
+  height: 90%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
 }
 
 .preview-frame {
-    width: 100%;
-    height: 100%;
-    border: none;
-    object-fit: contain;
+  width: 100%;
+  height: 100%;
+  border: none;
+  object-fit: contain;
 }
 
 .btn-close-preview {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    background: rgba(0,0,0,0.7);
-    color: white;
-    border: none;
-    border-radius: 50%;
-    width: 30px;
-    height: 30px;
-    cursor: pointer;
-    z-index: 10;
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  cursor: pointer;
+  z-index: 10;
 }
 
 /* Merge Tool Rotation Controls */
 .merge-controls {
-    display: flex;
-    gap: 5px;
-    flex-wrap: wrap;
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
 }
 
 .merge-thumb {
-    transition: transform 0.3s ease; /* Smooth rotation animation */
+  transition: transform 0.3s ease; /* Smooth rotation animation */
 }
 
 /* Native Camera Input */
 .native-camera-input {
-    display: none;
+  display: none;
 }
 
 /* Responsive adjustments */
