@@ -27,13 +27,14 @@ jobs:
         with:
           node-version: '20'
 
+      # This runs before the site is uploaded to ensure data.json is up to date
       - name: Generate folder structure
         run: |
           cd docs
           node generate-tree.js
 
       - name: Setup Pages
-        uses: actions/configure-pages@v4
+        uses: actions/configure-pages@v5
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

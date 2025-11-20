@@ -292,7 +292,8 @@ function addUploadGroup() {
                 </div>
                 <div class="form-group">
                     <label for="${groupId}-customfolder">Additional Folder (optional)</label>
-                    <input type="text" id="${groupId}-customfolder" class="form-input" placeholder="e.g., Endsem" onchange="updatePathPreview('${groupId}')"/>
+                    <input type="text" id="${groupId}-customfolder" class="form-input" placeholder="e.g., Endsem, Quiz 1, Assignments" onchange="updatePathPreview('${groupId}')"/>
+                    <small class="form-hint">Any folder name you want.</small>
                 </div>
                 <div class="path-preview">
                     <strong>Path:</strong> <code id="${groupId}-path-display">Select options above</code>
