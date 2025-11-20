@@ -8,8 +8,8 @@ const CONFIG = {
   GITHUB_CLIENT_ID: "Ov23linzqUpdM2As790u",
   GITHUB_REPO_OWNER: "IISERM",
   GITHUB_REPO_NAME: "question-paper-repo",
-  MAX_FILE_SIZE: 7.5 * 1024 * 1024, // 7.5 MB per file (becomes ~10MB when base64 encoded)
-  MAX_BATCH_SIZE: 7.5 * 1024 * 1024, // 7.5 MB raw file size limit per batch (allows 1 max-size file per batch)
+  MAX_FILE_SIZE: 7.5 * 1024 * 1024,
+  MAX_BATCH_SIZE: 7.5 * 1024 * 1024,
   ALLOWED_EXTENSIONS: [
     "pdf",
     "jpg",
@@ -22,6 +22,9 @@ const CONFIG = {
     "txt",
     "ipynb",
     "py",
+    "csv",
+    "tsv",
+    "html",
   ],
 };
 
@@ -29,10 +32,10 @@ const CONFIG = {
 let state = {
   token: null,
   username: null,
-  authType: null, // 'google' or 'github'
-  userEmail: null, // For Google auth
-  userName: null, // For Google auth (display name)
-  userPhoto: null, // For Google auth (profile photo)
+  authType: null,
+  userEmail: null,
+  userName: null,
+  userPhoto: null,
   uploadGroups: [],
   userForkName: null,
 };
@@ -89,7 +92,7 @@ document.addEventListener("DOMContentLoaded", () => {
   addInitialUploadGroup();
 });
 
-// Check authentication status from URL or localStorage
+// Check authentication status
 function checkAuthStatus() {
   const urlParams = new URLSearchParams(window.location.search);
   const token = urlParams.get("token");
@@ -101,9 +104,7 @@ function checkAuthStatus() {
     return;
   }
 
-  // Check for GitHub OAuth callback
   if (token && username) {
-    // Store credentials
     state.token = token;
     state.username = username;
     state.authType = "github";
@@ -111,18 +112,15 @@ function checkAuthStatus() {
     localStorage.setItem("github_username", username);
     localStorage.setItem("auth_type", "github");
 
-    // Clean URL
     window.history.replaceState({}, document.title, window.location.pathname);
 
     showAuthenticatedUI();
     return;
   }
 
-  // Check localStorage for existing auth
   const authType = localStorage.getItem("auth_type");
 
   if (authType === "google") {
-    // Restore Google auth state
     const userEmail = localStorage.getItem("user_email");
     const userName = localStorage.getItem("user_name");
     const userPhoto = localStorage.getItem("user_photo");
@@ -135,7 +133,6 @@ function checkAuthStatus() {
       showAuthenticatedUI();
     }
   } else if (authType === "github") {
-    // Restore GitHub auth state
     const storedToken = localStorage.getItem("github_token");
     const storedUsername = localStorage.getItem("github_username");
 
@@ -170,16 +167,14 @@ function setupEventListeners() {
   document.getElementById("copy-pr-link").addEventListener("click", copyPRLink);
 }
 
-// Initiate Google OAuth login (Firebase)
+// Initiate Google OAuth login
 async function initiateGoogleLogin() {
   try {
     const result = await auth.signInWithPopup(googleProvider);
     const user = result.user;
 
-    // Check if email is from allowed domain
     const allowedDomain = "iisermohali.ac.in";
     if (!user.email.endsWith(`@${allowedDomain}`)) {
-      // Sign out immediately
       await auth.signOut();
       showError(
         `Access restricted to ${allowedDomain} email addresses only.\n\nYour email: ${user.email}\n\nPlease use your IISER Mohali institute email or sign in with GitHub for external contributions.`
@@ -187,13 +182,11 @@ async function initiateGoogleLogin() {
       return;
     }
 
-    // Store Google auth info
     state.authType = "google";
     state.userEmail = user.email;
     state.userName = user.displayName || user.email.split("@")[0];
     state.userPhoto = user.photoURL;
 
-    // Store in localStorage
     localStorage.setItem("auth_type", "google");
     localStorage.setItem("user_email", user.email);
     localStorage.setItem("user_name", state.userName);
@@ -227,7 +220,6 @@ function initiateGitHubLogin() {
 
 // Logout
 async function logout() {
-  // Sign out from Firebase if using Google auth
   if (state.authType === "google") {
     try {
       await auth.signOut();
@@ -236,7 +228,6 @@ async function logout() {
     }
   }
 
-  // Clear state
   state.token = null;
   state.username = null;
   state.authType = null;
@@ -244,7 +235,6 @@ async function logout() {
   state.userName = null;
   state.userPhoto = null;
 
-  // Clear localStorage
   localStorage.removeItem("github_token");
   localStorage.removeItem("github_username");
   localStorage.removeItem("auth_type");
@@ -262,10 +252,8 @@ function showAuthenticatedUI() {
   const usernameElement = document.getElementById("username");
 
   if (state.authType === "google") {
-    // Display Google user info (without profile photo)
     usernameElement.innerHTML = `<strong>${state.userName}</strong> (${state.userEmail})`;
   } else {
-    // Display GitHub username
     usernameElement.textContent = state.username;
   }
 
@@ -360,7 +348,16 @@ function addUploadGroup() {
             </div>
             
             <div class="form-group">
-                <label for="${groupId}-files">Files <span class="required">*</span></label>
+                <div class="file-upload-actions">
+                    <label for="${groupId}-files" style="margin:0">Files <span class="required">*</span></label>
+                    <button type="button" class="btn-camera" onclick="openCamera('${groupId}')">
+                        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M15 12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h1.172a3 3 0 0 0 2.12-.879l.83-.828A1 1 0 0 1 6.827 3h2.344a1 1 0 0 1 .707.293l.828.828A3 3 0 0 0 12.828 5H14a1 1 0 0 1 1 1v6zM2 4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-1.172a2 2 0 0 1-1.414-.586l-.828-.828A2 2 0 0 0 9.172 2H6.828a2 2 0 0 0-1.414.586l-.828.828A2 2 0 0 1 3.172 4H2z"/>
+                            <path d="M8 11a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5zm0 1a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM3 6.5a.5.5 0 1 1-1 0 .5.5 0 0 1 1 0z"/>
+                        </svg>
+                        Take Photo
+                    </button>
+                </div>
                 <div class="file-upload-area" id="${groupId}-drop-zone">
                     <input 
                         type="file" 
@@ -380,6 +377,17 @@ function addUploadGroup() {
                     </label>
                 </div>
                 <div id="${groupId}-file-list" class="file-list"></div>
+                
+                <!-- Merge Button Area -->
+                <div class="tools-bar">
+                    <button type="button" class="btn-tool" onclick="openMergeTool('${groupId}')">
+                        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M11.534 7h3.932a.25.25 0 0 1 .192.41l-1.966 2.36a.25.25 0 0 1-.384 0l-1.966-2.36a.25.25 0 0 1 .192-.41zm-11 2h3.932a.25.25 0 0 0 .192-.41L2.692 6.23a.25.25 0 0 0-.384 0L.342 8.59A.25.25 0 0 0 .534 9z"/>
+                            <path fill-rule="evenodd" d="M8 3c-1.552 0-2.94.707-3.857 1.818a.5.5 0 1 1-.771-.636A6.002 6.002 0 0 1 13.917 7H12.9A5.002 5.002 0 0 0 8 3zM3.1 9a5.002 5.002 0 0 0 8.757 2.182.5.5 0 1 1 .771.636A6.002 6.002 0 0 1 2.083 9H3.1z"/>
+                        </svg>
+                        Merge Images to PDF
+                    </button>
+                </div>
             </div>
         </div>
     `;
@@ -404,7 +412,6 @@ window.removeUploadGroup = function (groupId) {
     group.remove();
     state.uploadGroups = state.uploadGroups.filter((g) => g.id !== groupId);
 
-    // Renumber remaining groups
     document.querySelectorAll(".upload-group").forEach((group, index) => {
       group.querySelector("h4").textContent = `Folder ${index + 1}`;
     });
@@ -469,7 +476,6 @@ window.handleFileSelect = function (groupId) {
     console.log(`  ${idx + 1}. ${file.name} (${formatFileSize(file.size)})`);
   });
 
-  // Get existing files from state
   const group = state.uploadGroups.find((g) => g.id === groupId);
   const existingFiles = group ? [...group.files] : [];
 
@@ -481,13 +487,11 @@ window.handleFileSelect = function (groupId) {
     console.log(`  ${idx + 1}. ${file.name} (${formatFileSize(file.size)})`);
   });
 
-  // Validate new files
   const validNewFiles = [];
   const errors = [];
   const oversizedFiles = [];
 
   newFiles.forEach((file) => {
-    // Check file size
     if (file.size > CONFIG.MAX_FILE_SIZE) {
       const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
       errors.push(`${file.name}: File too large (${sizeMB} MB, max 7.5 MB)`);
@@ -498,7 +502,6 @@ window.handleFileSelect = function (groupId) {
       return;
     }
 
-    // Check file extension
     const extension = file.name.split(".").pop().toLowerCase();
     if (!CONFIG.ALLOWED_EXTENSIONS.includes(extension)) {
       errors.push(`${file.name}: Unsupported file type`);
@@ -512,7 +515,6 @@ window.handleFileSelect = function (groupId) {
     console.log(`[handleFileSelect] ✅ Accepted: ${file.name}`);
   });
 
-  // Combine existing files with new valid files
   const allFiles = [...existingFiles, ...validNewFiles];
 
   console.log(`[handleFileSelect] Total files after merge:`, allFiles.length);
@@ -520,7 +522,6 @@ window.handleFileSelect = function (groupId) {
     console.log(`  ${idx + 1}. ${file.name} (${formatFileSize(file.size)})`);
   });
 
-  // Show errors with helpful message for oversized files
   if (errors.length > 0) {
     let errorMessage = "Some files were rejected:\n\n" + errors.join("\n");
 
@@ -534,19 +535,14 @@ window.handleFileSelect = function (groupId) {
     }
 
     alert(errorMessage);
-
-    // Show persistent warning banner if there are oversized files
     showOversizedFileWarning(groupId, oversizedFiles);
   } else {
-    // Remove warning if all files are valid
     removeOversizedFileWarning(groupId);
   }
 
-  // Update state with ALL files (existing + new)
   if (group) {
     group.files = allFiles;
 
-    // Initialize custom names for new files (preserve existing custom names)
     allFiles.forEach((file, index) => {
       if (!group.fileNames[index]) {
         group.fileNames[index] = file.name;
@@ -557,7 +553,6 @@ window.handleFileSelect = function (groupId) {
     });
   }
 
-  // Update the file input to contain all files
   const dt = new DataTransfer();
   allFiles.forEach((file) => dt.items.add(file));
   input.files = dt.files;
@@ -567,7 +562,6 @@ window.handleFileSelect = function (groupId) {
     input.files.length
   );
 
-  // Display all files with editable names
   fileList.innerHTML = allFiles
     .map((file, index) => {
       const customName = group.fileNames[index] || file.name;
@@ -608,7 +602,6 @@ window.removeFile = function (groupId, index) {
 
     group.files.splice(index, 1);
 
-    // Update fileNames mapping
     const newFileNames = {};
     Object.keys(group.fileNames).forEach((key) => {
       const keyIndex = parseInt(key);
@@ -625,14 +618,11 @@ window.removeFile = function (groupId, index) {
       console.log(`  ${idx + 1}. ${file.name}`);
     });
 
-    // Update file input
     const input = document.getElementById(`${groupId}-files`);
     const dt = new DataTransfer();
     group.files.forEach((file) => dt.items.add(file));
     input.files = dt.files;
 
-    // Refresh display (but prevent handleFileSelect from re-processing)
-    // Instead, just re-render the list
     const fileList = document.getElementById(`${groupId}-file-list`);
     fileList.innerHTML = group.files
       .map((file, idx) => {
@@ -671,7 +661,6 @@ function formatFileSize(bytes) {
 
 // Show warning for oversized files
 function showOversizedFileWarning(groupId, oversizedFiles) {
-  // Remove existing warning if any
   removeOversizedFileWarning(groupId);
 
   const group = document.getElementById(groupId);
@@ -734,27 +723,19 @@ window.updatePathPreview = function (groupId) {
   }
 };
 
-// Validate course code (3 digits only)
+// Validate course code
 window.validateCourseCode = function (groupId) {
   const input = document.getElementById(`${groupId}-coursecode`);
   const value = input.value;
-
-  // Remove non-digits
   input.value = value.replace(/\D/g, "").slice(0, 3);
-
-  // Update path preview
   updatePathPreview(groupId);
 };
 
-// Validate year (4 digits only)
+// Validate year
 window.validateYear = function (groupId) {
   const input = document.getElementById(`${groupId}-year`);
   const value = input.value;
-
-  // Remove non-digits
   input.value = value.replace(/\D/g, "").slice(0, 4);
-
-  // Update path preview
   updatePathPreview(groupId);
 };
 
@@ -767,8 +748,6 @@ window.updateFileName = function (groupId, index, newName) {
   const group = state.uploadGroups.find((g) => g.id === groupId);
   if (group) {
     const originalName = group.files[index].name;
-
-    // Sanitize filename
     const sanitized = newName.trim();
     if (sanitized) {
       group.fileNames[index] = sanitized;
@@ -776,7 +755,6 @@ window.updateFileName = function (groupId, index, newName) {
         `[updateFileName] ✅ Updated: "${originalName}" → "${sanitized}"`
       );
     } else {
-      // Revert to original if empty
       group.fileNames[index] = originalName;
       const input = document.querySelector(
         `#${groupId}-file-list .file-item:nth-child(${index + 1}) .file-name-input`
@@ -816,18 +794,15 @@ function getFolderPath(groupId) {
 async function handleSubmit(e) {
   e.preventDefault();
 
-  // Validate form
   const validation = validateForm();
   if (!validation.valid) {
     alert(validation.message);
     return;
   }
 
-  // Get PR details
   const prTitle = document.getElementById("pr-title").value.trim();
   const prDescription = document.getElementById("pr-description").value.trim();
 
-  // Route to appropriate flow based on auth type
   if (state.authType === "google") {
     await handleDirectContribution(prTitle, prDescription);
   } else {
@@ -837,13 +812,11 @@ async function handleSubmit(e) {
 
 // Calculate size of a file with base64 encoding overhead
 function calculateBase64Size(file) {
-  // Base64 encoding increases size by ~33%
   return Math.ceil(file.size * 1.33);
 }
 
-// Build complete upload groups list for PR description
+// Build complete upload groups list
 function buildCompleteUploadGroupsList(allUploadedFiles) {
-  // Group files by folder path
   const groupedByPath = {};
 
   allUploadedFiles.forEach(({ folderPath, fileName }) => {
@@ -853,7 +826,6 @@ function buildCompleteUploadGroupsList(allUploadedFiles) {
     groupedByPath[folderPath].push(fileName);
   });
 
-  // Convert to array format
   return Object.entries(groupedByPath).map(([folderPath, fileNames]) => ({
     folderPath,
     files: fileNames.map((name) => ({ name })),
@@ -871,7 +843,6 @@ function createBatches(uploadGroupsData, fileObjects) {
     `[createBatches] MAX_BATCH_SIZE: ${(CONFIG.MAX_BATCH_SIZE / (1024 * 1024)).toFixed(2)} MB`
   );
 
-  // Flatten all files with their metadata
   const allFiles = [];
   uploadGroupsData.forEach((group, groupIdx) => {
     group.files.forEach((fileData, fileIdx) => {
@@ -897,12 +868,10 @@ function createBatches(uploadGroupsData, fileObjects) {
 
   console.log(`[createBatches] Total files to batch: ${allFiles.length}`);
 
-  // Split into batches
   for (const item of allFiles) {
     const itemSizeMB = (item.fileSize / (1024 * 1024)).toFixed(2);
     const maxBatchMB = (CONFIG.MAX_BATCH_SIZE / (1024 * 1024)).toFixed(2);
 
-    // If single file exceeds batch size, put it in its own batch (but allow it)
     if (item.fileSize > CONFIG.MAX_BATCH_SIZE) {
       console.log(
         `[createBatches] ⚠️ File ${item.fileData.name} (${itemSizeMB} MB) exceeds batch limit (${maxBatchMB} MB)`
@@ -926,7 +895,6 @@ function createBatches(uploadGroupsData, fileObjects) {
       continue;
     }
 
-    // If adding this file would exceed limit, start new batch
     if (
       currentBatchSize + item.fileSize > CONFIG.MAX_BATCH_SIZE &&
       currentBatch.length > 0
@@ -949,7 +917,6 @@ function createBatches(uploadGroupsData, fileObjects) {
     currentBatchSize += item.fileSize;
   }
 
-  // Add remaining files
   if (currentBatch.length > 0) {
     batches.push(currentBatch);
     console.log(
@@ -975,12 +942,11 @@ function createBatches(uploadGroupsData, fileObjects) {
   return batches;
 }
 
-// Handle direct contribution (Google auth flow)
+// Handle direct contribution
 async function handleDirectContribution(prTitle, prDescription) {
   showProgress("Starting direct contribution...", 0);
 
   try {
-    // Prepare upload groups data
     const uploadGroupsData = state.uploadGroups.map((group) => {
       const folderPath = getFolderPath(group.id);
       if (!folderPath) {
@@ -990,15 +956,13 @@ async function handleDirectContribution(prTitle, prDescription) {
         folderPath: folderPath,
         files: group.files.map((file, index) => ({
           name: group.fileNames[index] || file.name,
-          content: null, // Will be filled below
+          content: null,
         })),
       };
     });
 
-    // Keep file objects for batching
     const fileObjects = state.uploadGroups.map((group) => group.files);
 
-    // Create batches based on size
     updateProgress("Preparing files...", 5);
     const batches = createBatches(uploadGroupsData, fileObjects);
 
@@ -1007,8 +971,6 @@ async function handleDirectContribution(prTitle, prDescription) {
     let branchName = null;
     let totalFilesProcessed = 0;
     const totalFiles = batches.reduce((sum, batch) => sum + batch.length, 0);
-
-    // Keep track of all uploaded files for PR description
     const allUploadedFiles = [];
 
     console.log("═══════════════════════════════════════════════════");
@@ -1017,7 +979,6 @@ async function handleDirectContribution(prTitle, prDescription) {
     console.log(`Total files: ${totalFiles}`);
     console.log("═══════════════════════════════════════════════════");
 
-    // Process each batch
     for (let batchIdx = 0; batchIdx < batches.length; batchIdx++) {
       const batch = batches[batchIdx];
       const isLastBatch = batchIdx === batches.length - 1;
@@ -1032,7 +993,6 @@ async function handleDirectContribution(prTitle, prDescription) {
         10 + Math.floor((batchIdx / batches.length) * 70)
       );
 
-      // Convert batch files to base64
       console.log(`[Batch ${batchIdx + 1}] Converting files to base64...`);
       const batchGroups = {};
       for (const item of batch) {
@@ -1049,7 +1009,6 @@ async function handleDirectContribution(prTitle, prDescription) {
         console.log(`  ✅ Converted: ${item.fileData.name}`);
       }
 
-      // Convert to array format expected by worker
       const batchUploadGroups = Object.entries(batchGroups).map(
         ([folderPath, files]) => ({
           folderPath,
@@ -1057,7 +1016,6 @@ async function handleDirectContribution(prTitle, prDescription) {
         })
       );
 
-      // Track uploaded files for PR description
       batchUploadGroups.forEach((group) => {
         group.files.forEach((file) => {
           allUploadedFiles.push({
@@ -1071,7 +1029,6 @@ async function handleDirectContribution(prTitle, prDescription) {
         `[Batch ${batchIdx + 1}] Total files tracked so far: ${allUploadedFiles.length}`
       );
 
-      // For the last batch, send info about ALL uploaded files for PR description
       let uploadGroupsForPR = undefined;
       if (isLastBatch) {
         uploadGroupsForPR = buildCompleteUploadGroupsList(allUploadedFiles);
@@ -1089,12 +1046,12 @@ async function handleDirectContribution(prTitle, prDescription) {
       const requestPayload = {
         userEmail: state.userEmail,
         userName: state.userName,
-        uploadGroups: batchUploadGroups, // Current batch files to upload
-        uploadGroupsForPR: isLastBatch ? uploadGroupsForPR : undefined, // All files for PR description
+        uploadGroups: batchUploadGroups,
+        uploadGroupsForPR: isLastBatch ? uploadGroupsForPR : undefined,
         prTitle: prTitle,
         prDescription: prDescription,
-        branchName: branchName, // Use existing branch for subsequent batches
-        shouldCreatePR: isLastBatch, // Only create PR on last batch
+        branchName: branchName,
+        shouldCreatePR: isLastBatch,
         batchInfo: {
           current: batchIdx + 1,
           total: batches.length,
@@ -1107,7 +1064,6 @@ async function handleDirectContribution(prTitle, prDescription) {
         batchInfo: requestPayload.batchInfo,
       });
 
-      // Send batch to worker
       const response = await fetch(
         `${CONFIG.WORKER_URL}/api/contribute-direct`,
         {
@@ -1133,7 +1089,6 @@ async function handleDirectContribution(prTitle, prDescription) {
         filesUploaded: result.filesUploaded?.length || 0,
       });
 
-      // Store branch name from first batch
       if (batchIdx === 0) {
         branchName = result.branch;
         console.log(`[Batch ${batchIdx + 1}] 🌿 Branch created: ${branchName}`);
@@ -1145,7 +1100,6 @@ async function handleDirectContribution(prTitle, prDescription) {
         `[Batch ${batchIdx + 1}] Progress: ${totalFilesProcessed}/${totalFiles} files uploaded`
       );
 
-      // Show PR result on last batch
       if (isLastBatch) {
         if (result.pr) {
           console.log(
@@ -1173,12 +1127,11 @@ async function handleDirectContribution(prTitle, prDescription) {
   }
 }
 
-// Handle GitHub contribution (existing fork-based flow)
+// Handle GitHub contribution
 async function handleGitHubContribution(prTitle, prDescription) {
   showProgress("Starting contribution process...", 0);
 
   try {
-    // Step 1: Check for existing fork
     updateProgress("Checking for existing fork...", 10);
     const forkExists = await checkFork();
 
@@ -1187,19 +1140,16 @@ async function handleGitHubContribution(prTitle, prDescription) {
       updateProgress("Using existing fork...", 20);
       fork = { owner: { login: state.username } };
     } else {
-      // Step 2: Fork the repository
       updateProgress("Forking repository...", 20);
       fork = await forkRepository();
     }
 
     state.userForkName = fork.owner.login;
 
-    // Step 3: Create a new branch
     updateProgress("Creating new branch...", 30);
     const branchName = `contribution-${Date.now()}`;
     await createBranch(state.userForkName, branchName);
 
-    // Step 4: Upload files
     const totalFiles = state.uploadGroups.reduce(
       (sum, g) => sum + g.files.length,
       0
@@ -1232,7 +1182,6 @@ async function handleGitHubContribution(prTitle, prDescription) {
       }
     }
 
-    // Step 5: Create pull request
     updateProgress("Creating pull request...", 90);
 
     const filesList = state.uploadGroups
@@ -1256,7 +1205,6 @@ async function handleGitHubContribution(prTitle, prDescription) {
 
     updateProgress("Complete!", 100);
 
-    // Show success
     setTimeout(() => {
       showSuccess(pr.html_url);
     }, 500);
@@ -1268,12 +1216,10 @@ async function handleGitHubContribution(prTitle, prDescription) {
 
 // Validate form
 function validateForm() {
-  // Check if authenticated
   if (!state.authType) {
     return { valid: false, message: "Please sign in first (Google or GitHub)" };
   }
 
-  // Additional validation for Google auth
   if (state.authType === "google" && !state.userEmail) {
     return {
       valid: false,
@@ -1281,7 +1227,6 @@ function validateForm() {
     };
   }
 
-  // Additional validation for GitHub auth
   if (state.authType === "github" && !state.token) {
     return {
       valid: false,
@@ -1289,7 +1234,6 @@ function validateForm() {
     };
   }
 
-  // Check if at least one group has files
   const hasFiles = state.uploadGroups.some((g) => g.files.length > 0);
   if (!hasFiles) {
     return {
@@ -1298,7 +1242,6 @@ function validateForm() {
     };
   }
 
-  // Check if all groups with files have valid paths
   for (const group of state.uploadGroups) {
     if (group.files.length > 0) {
       const subject = document.getElementById(`${group.id}-subject`).value;
@@ -1331,7 +1274,6 @@ function validateForm() {
     }
   }
 
-  // Check PR title
   const prTitle = document.getElementById("pr-title").value.trim();
   if (!prTitle) {
     return { valid: false, message: "Please provide a pull request title" };
@@ -1380,7 +1322,6 @@ async function createBranch(owner, branchName) {
 }
 
 async function uploadFile(owner, path, file, branch) {
-  // Convert file to base64
   const base64Content = await fileToBase64(file);
 
   return makeAPICall("/api/upload-file", {
@@ -1414,7 +1355,6 @@ function fileToBase64(file) {
     const reader = new FileReader();
     reader.readAsDataURL(file);
     reader.onload = () => {
-      // Remove data URL prefix
       const base64 = reader.result.split(",")[1];
       resolve(base64);
     };
@@ -1458,7 +1398,6 @@ function resetForm() {
   document.getElementById("progress-section").style.display = "none";
   document.getElementById("upload-section").style.display = "block";
 
-  // Clear form
   document.getElementById("contribution-form").reset();
   document.getElementById("upload-groups").innerHTML = "";
   state.uploadGroups = [];
@@ -1478,3 +1417,289 @@ function copyPRLink() {
     }, 2000);
   });
 }
+
+// ==========================================
+// CAMERA FUNCTIONALITY
+// ==========================================
+let currentCameraStream = null;
+let activeCameraGroupId = null;
+
+window.openCamera = async function (groupId) {
+  activeCameraGroupId = groupId;
+  const modal = document.getElementById("camera-modal");
+  const video = document.getElementById("camera-stream");
+  const captureBtn = document.getElementById("capture-btn");
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "environment" },
+    });
+    currentCameraStream = stream;
+    video.srcObject = stream;
+    modal.style.display = "flex";
+
+    captureBtn.onclick = () => capturePhoto(groupId);
+  } catch (err) {
+    console.error("Camera error:", err);
+    alert("Could not access camera. Please ensure permissions are granted.");
+  }
+};
+
+window.closeCamera = function () {
+  const modal = document.getElementById("camera-modal");
+  modal.style.display = "none";
+
+  if (currentCameraStream) {
+    currentCameraStream.getTracks().forEach((track) => {
+      track.stop();
+    });
+    currentCameraStream = null;
+  }
+  activeCameraGroupId = null;
+};
+
+function capturePhoto(groupId) {
+  const video = document.getElementById("camera-stream");
+  const canvas = document.getElementById("camera-canvas");
+
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+  canvas.toBlob(
+    (blob) => {
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const file = new File([blob], `capture-${timestamp}.jpg`, {
+        type: "image/jpeg",
+      });
+
+      addFileToGroup(groupId, file);
+      closeCamera();
+    },
+    "image/jpeg",
+    0.85
+  );
+}
+
+// Helper to programmatically add a file to a group
+function addFileToGroup(groupId, file) {
+  const group = state.uploadGroups.find((g) => g.id === groupId);
+  if (!group) return;
+
+  group.files.push(file);
+
+  const index = group.files.length - 1;
+  group.fileNames[index] = file.name;
+
+  const input = document.getElementById(`${groupId}-files`);
+  const dt = new DataTransfer();
+  group.files.forEach((f) => {
+    dt.items.add(f);
+  });
+  input.files = dt.files;
+
+  const fileList = document.getElementById(`${groupId}-file-list`);
+  fileList.innerHTML = group.files
+    .map((f, idx) => {
+      const customName = group.fileNames[idx] || f.name;
+      return `
+        <div class="file-item">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2zM9.5 3A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5v2z"/>
+            </svg>
+            <input type="text" class="file-name-input" value="${customName}"
+                onchange="updateFileName('${groupId}', ${idx}, this.value)" />
+            <span class="file-size">${formatFileSize(f.size)}</span>
+            <button type="button" class="btn-remove-file" onclick="removeFile('${groupId}', ${idx})">×</button>
+        </div>`;
+    })
+    .join("");
+}
+
+// ==========================================
+// MERGE TOOL (IMAGE TO PDF)
+// ==========================================
+let activeMergeGroupId = null;
+let mergeCandidates = []; // { file, index, originalName }
+
+window.openMergeTool = function (groupId) {
+  const group = state.uploadGroups.find((g) => g.id === groupId);
+  if (!group || group.files.length === 0) {
+    alert("No files in this folder to merge.");
+    return;
+  }
+
+  // Filter for images
+  mergeCandidates = [];
+  group.files.forEach((file, index) => {
+    const name = group.fileNames[index] || file.name;
+    if (file.type.startsWith("image/") || name.match(/\.(jpg|jpeg|png)$/i)) {
+      mergeCandidates.push({
+        file,
+        index,
+        name,
+        selected: true,
+      });
+    }
+  });
+
+  if (mergeCandidates.length < 1) {
+    alert("No image files found in this folder to merge.");
+    return;
+  }
+
+  activeMergeGroupId = groupId;
+  renderMergeList();
+
+  // Reset filename
+  const timestamp = new Date().toISOString().slice(0, 10);
+  document.getElementById("merge-filename").value =
+    `Scanned_Doc_${timestamp}.pdf`;
+
+  document.getElementById("merge-modal").style.display = "flex";
+};
+
+window.closeMergeTool = function () {
+  document.getElementById("merge-modal").style.display = "none";
+  activeMergeGroupId = null;
+  mergeCandidates = [];
+};
+
+function renderMergeList() {
+  const container = document.getElementById("merge-list");
+
+  container.innerHTML = mergeCandidates
+    .map((item, i) => {
+      // Only create blob URL if selected (for efficiency) or just create for all
+      // We need it for the thumbnail
+      const url = URL.createObjectURL(item.file);
+
+      return `
+        <div class="merge-item ${item.selected ? "" : "disabled"}">
+            <input type="checkbox" 
+                ${item.selected ? "checked" : ""} 
+                onchange="toggleMergeItem(${i})"
+                style="transform: scale(1.2); cursor: pointer;">
+            
+            <img src="${url}" class="merge-thumb" onload="URL.revokeObjectURL(this.src)">
+            
+            <div class="merge-info">
+                <span class="merge-name">${item.name}</span>
+                <span class="merge-size">${formatFileSize(item.file.size)}</span>
+            </div>
+            
+            <div class="merge-controls">
+                <button type="button" class="btn-icon-small" 
+                    onclick="moveMergeItem(${i}, -1)" 
+                    ${i === 0 ? "disabled" : ""}>↑</button>
+                <button type="button" class="btn-icon-small" 
+                    onclick="moveMergeItem(${i}, 1)" 
+                    ${i === mergeCandidates.length - 1 ? "disabled" : ""}>↓</button>
+            </div>
+        </div>`;
+    })
+    .join("");
+}
+
+window.toggleMergeItem = function (index) {
+  mergeCandidates[index].selected = !mergeCandidates[index].selected;
+  renderMergeList(); // Re-render to update styles
+};
+
+window.moveMergeItem = function (index, direction) {
+  const newIndex = index + direction;
+  if (newIndex < 0 || newIndex >= mergeCandidates.length) return;
+
+  // Swap
+  const temp = mergeCandidates[index];
+  mergeCandidates[index] = mergeCandidates[newIndex];
+  mergeCandidates[newIndex] = temp;
+
+  renderMergeList();
+};
+
+window.executeMerge = async function () {
+  const selectedItems = mergeCandidates.filter((i) => i.selected);
+  if (selectedItems.length === 0) {
+    alert("Please select at least one image.");
+    return;
+  }
+
+  const btn = document.querySelector("#merge-modal .btn-primary");
+  const originalText = btn.textContent;
+  btn.textContent = "Generating PDF...";
+  btn.disabled = true;
+
+  try {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    doc.deletePage(1); // Start clean
+
+    for (const item of selectedItems) {
+      const imgData = await fileToBase64(item.file);
+      const imgProps = doc.getImageProperties(imgData);
+
+      // Calculate fit to A4 (210 x 297 mm)
+      const pdfWidth = 210;
+      const pdfHeight = 297;
+      const imgRatio = imgProps.width / imgProps.height;
+      const pageRatio = pdfWidth / pdfHeight;
+
+      let w, h;
+      // Fit logic
+      if (imgRatio > pageRatio) {
+        w = pdfWidth;
+        h = w / imgRatio;
+      } else {
+        h = pdfHeight;
+        w = h * imgRatio;
+      }
+
+      // Center image
+      const x = (pdfWidth - w) / 2;
+      const y = (pdfHeight - h) / 2;
+
+      doc.addPage();
+      doc.addImage(imgData, "JPEG", x, y, w, h);
+    }
+
+    // Save
+    const filenameInput = document
+      .getElementById("merge-filename")
+      .value.trim();
+    const filename = filenameInput.endsWith(".pdf")
+      ? filenameInput
+      : filenameInput + ".pdf";
+    const pdfBlob = doc.output("blob");
+    const pdfFile = new File([pdfBlob], filename, { type: "application/pdf" });
+
+    // Add to group
+    addFileToGroup(activeMergeGroupId, pdfFile);
+
+    // Delete originals if requested
+    const shouldDelete = document.getElementById(
+      "merge-delete-originals"
+    ).checked;
+    if (shouldDelete) {
+      // We need to remove files from the group based on their ORIGINAL index
+      // Since removing modifies indices, we must delete from highest index to lowest
+      const indicesToRemove = selectedItems
+        .map((i) => i.index)
+        .sort((a, b) => b - a);
+
+      indicesToRemove.forEach((idx) => {
+        removeFile(activeMergeGroupId, idx);
+      });
+    }
+
+    closeMergeTool();
+  } catch (error) {
+    console.error("Merge failed:", error);
+    alert("Failed to generate PDF: " + error.message);
+  } finally {
+    btn.textContent = originalText;
+    btn.disabled = false;
+  }
+};
